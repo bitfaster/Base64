@@ -253,6 +253,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FromBase64.cs" />
+    <Compile Include="FromBase64Loh.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ToBase64.cs" />

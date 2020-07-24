@@ -46,7 +46,7 @@ namespace Profiling
 
             for (int i = 0; i < 640000; i++)
             {
-                s.FromUtf8Base64String2();
+                s.FromUtf8Base64String();
             }
         }
 
@@ -56,7 +56,7 @@ namespace Profiling
 
             for (int i = 0; i < 640000; i++)
             {
-                lohString.FromUtf8Base64String2();
+                lohString.FromUtf8Base64String();
             }
 
         }
@@ -78,7 +78,7 @@ namespace Profiling
                     var resultBytes = Convert.FromBase64String(s2);
                     var convertString = Encoding.UTF8.GetString(resultBytes);
 
-                    var xStr = s2.FromUtf8Base64String2();
+                    var xStr = s2.FromUtf8Base64String();
 
                     if (xStr != convertString)
                     {
@@ -96,7 +96,7 @@ namespace Profiling
 
             for (int i = 0; i < 640000; i++)
             {
-                s.FromUtf8Base64String2();
+                s.FromUtf8Base64String();
             }
         }
     }

@@ -48,12 +48,12 @@
   <ItemGroup>
     <Compile Include="Base64Buffer.cs" />
     <Compile Include="BufferedStreamWriter.cs" />
-    <Compile Include="Class1.cs" />
     <Compile Include="MemoryStreamExtensions.cs" />
     <Compile Include="MemoryStreamFactory.cs" />
     <Compile Include="ObjectPool.cs" />
     <Compile Include="PooledUtf8EncodingBuffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StringExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

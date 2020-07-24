@@ -53,7 +53,7 @@ namespace Base64.UnitTests
 
 			using (var s = new MemoryStream())
 			{
-				using (s.WriteFromBase64(utf8Base64String))
+				s.WriteFromBase64(utf8Base64String);
 				{
 					s.Position = 0;
 
