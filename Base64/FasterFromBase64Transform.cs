@@ -54,56 +54,50 @@ namespace Base64
 
         // Buffered stream writer guaratees that we can only write with full buffer
         // then call write transform final block to flush
-        public unsafe int TransformBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
+        public unsafe int TransformBlock(Block block)
         {
             // Do some validation
-            if (input == null) throw new ArgumentNullException("inputBuffer");
-            if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "ArgumentOutOfRange_NeedNonNegNum");
-            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
-            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+            block.Validate();
 
-            if (inputCount + inputIndex < 4)
+            if (block.inputCount + inputIndex < 4)
             {
                 // copy input to _inputBuffer for final block
-                Buffer.BlockCopy(this.tempByteBuffer, 0, this.inputBuffer, inputIndex, inputCount);
-                inputIndex += inputCount;
+                Buffer.BlockCopy(this.tempByteBuffer, 0, this.inputBuffer, inputIndex, block.inputCount);
+                inputIndex += block.inputCount;
                 return 0;
             }
 
             // Get the number of 4 bytes blocks to transform
-            int numBlocks = (inputCount + inputIndex) / 4;
+            int numBlocks = (block.inputCount + inputIndex) / 4;
 
             // copy remainder to _inputBuffer for final block
-            inputIndex = (inputCount + inputIndex) % 4;
-            Buffer.BlockCopy(input, inputCount - inputIndex, this.inputBuffer, 0, inputIndex);
+            inputIndex = (block.inputCount + inputIndex) % 4;
+            Buffer.BlockCopy(block.input, block.inputCount - inputIndex, this.inputBuffer, 0, inputIndex);
 
             int nWritten = 0;
 
             fixed (char* cp = tempCharBuffer)
-            fixed (byte* ip = input)
+            fixed (byte* ip = block.input)
             {
                 nWritten = ASCII.GetChars(ip, 4 * numBlocks, cp, bufferSize);
             }
 
             // write chars directly to outputBuffer
-            fixed (byte* op = outputBuffer)
+            fixed (byte* op = block.outputBuffer)
             {
-                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
             }
         }
 
-        public unsafe int TransformFinalBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
+        public unsafe int TransformFinalBlock(Block block)
         {
             // Do some validation
-            if (input == null) throw new ArgumentNullException("inputBuffer");
-            if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "ArgumentOutOfRange_NeedNonNegNum");
-            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
-            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+            block.Validate();
 
             int effectiveCount;
 
-            Buffer.BlockCopy(input, inputOffset, tempByteBuffer, 0, inputCount);
-            effectiveCount = inputCount;
+            Buffer.BlockCopy(block.input, block.inputOffset, tempByteBuffer, 0, block.inputCount);
+            effectiveCount = block.inputCount;
 
             if (effectiveCount + inputIndex < 4)
             {
@@ -136,9 +130,9 @@ namespace Base64
             Reset();
 
             // write chars directly to outputBuffer
-            fixed (byte* op = outputBuffer)
+            fixed (byte* op = block.outputBuffer)
             {
-                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
             }
         }
 

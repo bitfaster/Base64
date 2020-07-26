@@ -125,7 +125,7 @@ namespace Base64.UnitTests
 			// The length of a base64 encoded string is always a multiple of 4
 
 			// throws System.FormatException: Invalid length for a Base-64 char array or string.
-			var resultBytes = Convert.FromBase64String(base64string);
+			//var resultBytes = Convert.FromBase64String(base64string);
 			//var convertString = Encoding.UTF8.GetString(resultBytes);
 
 			var streamString = base64string.FromUtf8Base64String();

@@ -19,7 +19,9 @@ namespace Base64.UnitTests
 
         private readonly IBase64Transform t = new FromBase64TransformWithWhiteSpace();
 
-        private static byte[] outputBuffer = new byte[4096];
+        //private static byte[] outputBuffer = new byte[4096];
+
+        private readonly Block block = new Block(0, 4096);
 
         [TestMethod]
         public void Test_a()
@@ -95,13 +97,19 @@ namespace Base64.UnitTests
             var reference = Convert.FromBase64String(input);
 
             var bytes = Encoding.ASCII.GetBytes(input);
-            int len = t.TransformBlock(bytes, 0, bytes.Length, outputBuffer, 0);
+
+            this.block.input = bytes;
+            this.block.inputOffset = 0;
+            this.block.inputCount = bytes.Length;
+            this.block.outputOffset = 0;
+
+            int len = t.TransformBlock(block);
 
             len.Should().Be(reference.Length);
 
             for (int i = 0; i < reference.Length; i++)
             {
-                outputBuffer[i].Should().Be(reference[i], $"Difference at {i}");
+                block.outputBuffer[i].Should().Be(reference[i], $"Difference at {i}");
             }
         }
 
@@ -124,20 +132,27 @@ namespace Base64.UnitTests
             int numWholeBlocks = chunk / inputBlockSize;
             int numWholeBlocksInBytes = numWholeBlocks * inputBlockSize;
 
-            bytesWritten += t.TransformBlock(bytes, inputIndex, numWholeBlocksInBytes, outputBuffer, bytesWritten);
+            this.block.input = bytes;
+            this.block.inputOffset = inputIndex;
+            this.block.inputCount = numWholeBlocksInBytes;
+            this.block.outputOffset = bytesWritten;
+
+            bytesWritten += t.TransformBlock(block);
             inputIndex += numWholeBlocksInBytes;
 
             int remainder = bytes.Length - inputIndex;
-            bytesWritten += t.TransformFinalBlock(bytes, inputIndex, remainder, outputBuffer, bytesWritten);
 
+            block.inputOffset = inputIndex;
+            block.inputCount = remainder;
+            block.outputOffset = bytesWritten;
 
+            bytesWritten += t.TransformFinalBlock(block);
 
-            
             bytesWritten.Should().Be(reference.Length);
 
             for (int i = 0; i < reference.Length; i++)
             {
-                outputBuffer[i].Should().Be(reference[i], $"Difference at {i}");
+                block.outputBuffer[i].Should().Be(reference[i], $"Difference at {i}");
             }
         }
     }

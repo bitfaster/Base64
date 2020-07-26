@@ -54,20 +54,17 @@ namespace Base64
         // Try to process continuous arrays of data. If there is a whitespace, process everything before in a continuous array.
         // Then try to find a valid 4 byte section and process it. Then continue to find and process continuous arrays.
 
-        public unsafe int TransformBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
+        public unsafe int TransformBlock(Block block)
         {
-            if (input == null) throw new ArgumentNullException(nameof(input));
-            if (inputOffset < 0) throw new ArgumentOutOfRangeException(nameof(inputOffset), "ArgumentOutOfRange_NeedNonNegNum");
-            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
-            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+            block.Validate();
 
             int effectiveCount;
             int totalOutputBytes = 0;
 
-            fixed (byte* inputPtr = input) 
+            fixed (byte* inputPtr = block.input) 
             {
-                byte* startPtr = (byte*)(inputPtr + inputOffset);
-                byte* endMarkerPtr = (byte*)(inputPtr + inputOffset + inputCount);
+                byte* startPtr = (byte*)(inputPtr + block.inputOffset);
+                byte* endMarkerPtr = (byte*)(inputPtr + block.inputOffset + block.inputCount);
                 byte* endPtr = startPtr;
 
                 while (endPtr < endMarkerPtr)
@@ -99,11 +96,11 @@ namespace Base64
                         nWritten = ASCII.GetChars(startPtr, 4 * numBlocks, cp, bufferSize);
                     }
 
-                    fixed (byte* op = outputBuffer)
+                    fixed (byte* op = block.outputBuffer)
                     {
-                        int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                        int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
 
-                        outputOffset += outputBytes;
+                        block.outputOffset += outputBytes;
                         totalOutputBytes += outputBytes;
                     }
 
@@ -137,11 +134,11 @@ namespace Base64
                                 nWritten = ASCII.GetChars(tp, 4, cp, bufferSize);
                             }
 
-                            fixed (byte* op = outputBuffer)
+                            fixed (byte* op = block.outputBuffer)
                             {
-                                int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                                int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
 
-                                outputOffset += outputBytes;
+                                block.outputOffset += outputBytes;
                                 totalOutputBytes += outputBytes;
                             }
 
@@ -166,12 +163,9 @@ namespace Base64
             }
         }
 
-        public unsafe int TransformFinalBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
+        public unsafe int TransformFinalBlock(Block block)
         {
-            if (input == null) throw new ArgumentNullException("inputBuffer");
-            if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "ArgumentOutOfRange_NeedNonNegNum");
-            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
-            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+            block.Validate();
 
             int totalOutputBytes = 0;
             int nWritten = 0;
@@ -180,10 +174,10 @@ namespace Base64
             if (this.tempCount > 0)
             {
                 // try to write a full block starting with remainder of last write
-                fixed (byte* inputPtr = input)
+                fixed (byte* inputPtr = block.input)
                 {
-                    byte* startPtr = (byte*)(inputPtr + inputOffset);
-                    byte* endMarkerPtr = (byte*)(inputPtr + inputOffset + inputCount);
+                    byte* startPtr = (byte*)(inputPtr + block.inputOffset);
+                    byte* endMarkerPtr = (byte*)(inputPtr + block.inputOffset + block.inputCount);
 
                     startPtr = SkipSpaces(startPtr, endMarkerPtr);
 
@@ -214,25 +208,25 @@ namespace Base64
                         nWritten = ASCII.GetChars(tp, 4, cp, bufferSize);
                     }
 
-                    fixed (byte* op = outputBuffer)
+                    fixed (byte* op = block.outputBuffer)
                     {
-                        int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                        int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
 
-                        outputOffset += outputBytes;
+                        block.outputOffset += outputBytes;
                         totalOutputBytes += outputBytes;
                     }
 
                     // advance offset
-                    int count = (int)(startPtr - (byte*)(inputPtr + inputOffset));
-                    inputOffset += count;
-                    inputCount -= count;
+                    int count = (int)(startPtr - (byte*)(inputPtr + block.inputOffset));
+                    block.inputOffset += count;
+                    block.inputCount -= count;
                 }
             }
 
             int effectiveCount;
 
-            Buffer.BlockCopy(input, inputOffset, tempByteBuffer, 0, inputCount);
-            effectiveCount = inputCount;
+            Buffer.BlockCopy(block.input, block.inputOffset, tempByteBuffer, 0, block.inputCount);
+            effectiveCount = block.inputCount;
 
             if (effectiveCount == 0)
             {
@@ -245,9 +239,9 @@ namespace Base64
                 Reset();
 
                 // handle trailing whitespace
-                for (int i = inputOffset; i < inputCount; i++)
+                for (int i = block.inputOffset; i < block.inputCount; i++)
                 {
-                    if (input[i] != (int)' ' && input[i] != (int)'\n' && input[i] != (int)'\r' && input[i] != (int)'\t' && input[i] != (int)'\0')
+                    if (block.input[i] != (int)' ' && block.input[i] != (int)'\n' && block.input[i] != (int)'\r' && block.input[i] != (int)'\t' && block.input[i] != (int)'\0')
                     {
                         throw new FormatException("Invalid length for a Base-64 char array or string");
                     }  
@@ -279,9 +273,9 @@ namespace Base64
             Reset();
 
             // write chars directly to outputBuffer
-            fixed (byte* op = outputBuffer)
+            fixed (byte* op = block.outputBuffer)
             {
-                return totalOutputBytes + UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                return totalOutputBytes + UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
             }
         }
 

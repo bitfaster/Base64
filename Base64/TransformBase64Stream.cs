@@ -13,15 +13,13 @@ namespace Base64
         private readonly Stream stream;
         private readonly IBase64Transform transform;
 
-        private byte[] inputBlock;
-        private int inputBlockIndex = 0;
-        private int inputBlockSize;
-        private byte[] outputBlock;
-        private byte[] outputBuffer;
-        private int outputBlockIndex = 0;
-        private int outputBlockSize;
+        private byte[] finalInputBlock;
+        private int finalInputBlockCount = 0;
+        private int finalInputBlockSize;
         private bool finalBlockTransformed = false;
         private bool leaveOpen;
+
+        private Block block;
 
         private const string StreamNotSeekable = "Stream is not seekable";
 
@@ -30,11 +28,10 @@ namespace Base64
             this.stream = stream;
             this.transform = base64Buffer.FromBase64Transform;
 
-            this.inputBlockSize = base64Buffer.InputBlock.Length;
-            this.outputBlockSize = base64Buffer.OutputBlock.Length;
-            this.inputBlock = base64Buffer.InputBlock;
-            this.outputBlock = base64Buffer.OutputBlock;
-            this.outputBuffer = base64Buffer.OutputBuffer;
+            this.finalInputBlockSize = base64Buffer.FinalInputBlock.Length;
+            this.finalInputBlock = base64Buffer.FinalInputBlock;
+
+            this.block = base64Buffer.Block;
 
             this.leaveOpen = leaveOpen;
         }
@@ -58,22 +55,19 @@ namespace Base64
         {
             if (this.finalBlockTransformed)
                 throw new NotSupportedException("Final block already flushed");
-            // We have to process the last block here.  First, we have the final block in _InputBuffer, so transform it
 
-            //byte[] finalBytes = this.transform.TransformFinalBlock(this.inputBlock, 0, this.inputBlockIndex, this.outputBuffer, 0);
-            int len = this.transform.TransformFinalBlock(this.inputBlock, 0, this.inputBlockIndex, this.outputBuffer, 0);
+            // We have to process the last block here.  First, we have the final block in tempInputBlock, so transform it
+            this.block.input = this.finalInputBlock;
+            this.block.inputOffset = 0;
+            this.block.inputCount = this.finalInputBlockCount;
+            this.block.outputOffset = 0;
+
+            int len = this.transform.TransformFinalBlock(this.block);
+            this.block.Reset();
 
             this.finalBlockTransformed = true;
 
-            // Now, write out anything sitting in the _OutputBuffer...
-            if (this.outputBlockIndex > 0)
-            {
-                this.stream.Write(this.outputBlock, 0, this.outputBlockIndex);
-                this.outputBlockIndex = 0;
-            }
-
-            // Write out finalBytes
-            this.stream.Write(this.outputBuffer, 0, len);
+            this.stream.Write(this.block.outputBuffer, 0, len);
 
             this.stream.Flush();
 
@@ -87,7 +81,7 @@ namespace Base64
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            throw new NotSupportedException("Stream is readonly");
+            throw new NotSupportedException("Stream is write only");
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -112,67 +106,35 @@ namespace Base64
             if (buffer.Length - offset < count)
                 throw new ArgumentException("Argument_InvalidOffLen");
 
+            if (this.finalInputBlockCount != 0)
+                throw new InvalidOperationException("An incomplete block was written prior to calling write.");
+
             // write <= count bytes to the output stream, transforming as we go.
             // Basic idea: using bytes in the inputBlock first, make whole blocks,
-            // transform them, and write them out. Cache any remaining bytes in the inputBlock.
+            // transform them, and write them out. Cache any remaining bytes in the finalInputBlock.
             int bytesToWrite = count;
             int currentInputIndex = offset;
 
-            // if we have some bytes in the inputBlock, we have to deal with those first,
-            // so let's try to make an entire block out of it
-            if (this.inputBlockIndex > 0)
-            {
-                if (count >= this.inputBlockSize - this.inputBlockIndex)
-                {
-                    // we have enough to transform at least a block, so fill the input block
-                    Buffer.BlockCopy(buffer, offset, this.inputBlock, this.inputBlockIndex, this.inputBlockSize - this.inputBlockIndex);
-                    currentInputIndex += (this.inputBlockSize - this.inputBlockIndex);
-                    bytesToWrite -= (this.inputBlockSize - this.inputBlockIndex);
-                    this.inputBlockIndex = this.inputBlockSize;
-                    // Transform the block and write it out
-                }
-                else
-                {
-                    // not enough to transform a block, so just copy the bytes into the inputBlock
-                    // and return
-                    Buffer.BlockCopy(buffer, offset, this.inputBlock, this.inputBlockIndex, count);
-                    this.inputBlockIndex += count;
-                    return;
-                }
-            }
-
-            // If the OutputBuffer has anything in it, write it out
-            if (this.outputBlockIndex > 0)
-            {
-                this.stream.Write(this.outputBlock, 0, this.outputBlockIndex);
-                this.outputBlockIndex = 0;
-            }
-
-            // At this point, either the inputBlock is full, empty, or we've already returned.
-            // If full, let's process it -- we now know the outputBlock is empty
             int numOutputBytes;
-            if (this.inputBlockIndex == this.inputBlockSize)
-            {
-                numOutputBytes = this.transform.TransformBlock(this.inputBlock, 0, this.inputBlockSize, this.outputBlock, 0);
-                // write out the bytes we just got 
-                this.stream.Write(this.outputBlock, 0, numOutputBytes);
-                // reset the _InputBuffer
-                this.inputBlockIndex = 0;
-            }
 
             while (bytesToWrite > 0)
             {
-                if (bytesToWrite >= this.inputBlockSize)
+                if (bytesToWrite >= this.finalInputBlockSize)
                 {
                     // take chunks of outputBuffer.Length
-                    int chunk = Math.Min(this.outputBuffer.Length, bytesToWrite);
+                    int chunk = Math.Min(this.block.outputBuffer.Length, bytesToWrite);
 
                     // only write whole blocks
-                    int numWholeBlocks = chunk / inputBlockSize;
-                    int numWholeBlocksInBytes = numWholeBlocks * inputBlockSize;
+                    int numWholeBlocks = chunk / finalInputBlockSize;
+                    int numWholeBlocksInBytes = numWholeBlocks * finalInputBlockSize;
 
-                    numOutputBytes = this.transform.TransformBlock(buffer, currentInputIndex, numWholeBlocksInBytes, this.outputBuffer, 0);
-                    this.stream.Write(this.outputBuffer, 0, numOutputBytes);
+                    this.block.input = buffer;
+                    this.block.inputOffset = currentInputIndex;
+                    this.block.inputCount = numWholeBlocksInBytes;
+                    this.block.outputOffset = 0;
+
+                    numOutputBytes = this.transform.TransformBlock(block);
+                    this.stream.Write(this.block.outputBuffer, 0, numOutputBytes);
                     currentInputIndex += numWholeBlocksInBytes;
                     bytesToWrite -= numWholeBlocksInBytes;
                 }
@@ -180,8 +142,8 @@ namespace Base64
                 {
                     // In this case, we don't have an entire block's worth left, so store it up in the 
                     // input buffer, which by now must be empty.
-                    Buffer.BlockCopy(buffer, currentInputIndex, inputBlock, 0, bytesToWrite);
-                    inputBlockIndex += bytesToWrite;
+                    Buffer.BlockCopy(buffer, currentInputIndex, this.finalInputBlock, 0, bytesToWrite);
+                    this.finalInputBlockCount += bytesToWrite;
 
                     return;
                 }
@@ -215,9 +177,8 @@ namespace Base64
                     // since it's null after this
                     this.finalBlockTransformed = true;
 
-                    this.inputBlock = null;
-                    this.outputBlock = null;
-                    this.outputBuffer = null;
+                    this.block = null;
+                    this.finalInputBlock = null;
                 }
                 finally
                 {

@@ -70,16 +70,13 @@ namespace Base64
         //   That way, we do not need to copy inputBuffer => _inputBuffer => transformBuffer
 
 
-        public unsafe int TransformBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
+        public unsafe int TransformBlock(Block block)
         {
             // if (inputCount != bufferSize)
             //     throw new ArgumentOutOfRangeException("inputCount", "ArgumentOutOfRange_NeedNonNegNum");
 
             // Do some validation
-            if (input == null) throw new ArgumentNullException("inputBuffer");
-            if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "ArgumentOutOfRange_NeedNonNegNum");
-            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
-            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+            block.Validate();
 
             int effectiveCount;
 
@@ -92,8 +89,8 @@ namespace Base64
             //} 
             //else 
             //{
-            Buffer.BlockCopy(input, inputOffset, this.tempByteBuffer, 0, inputCount);
-            effectiveCount = inputCount;
+            Buffer.BlockCopy(block.input, block.inputOffset, this.tempByteBuffer, 0, block.inputCount);
+            effectiveCount = block.inputCount;
             //}            
 
             if (effectiveCount + inputIndex < 4)
@@ -132,30 +129,27 @@ namespace Base64
             }
 
             // write chars directly to outputBuffer
-            fixed (byte* op = outputBuffer)
+            fixed (byte* op = block.outputBuffer)
             {
-                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
             }
         }
 
-        public unsafe int TransformFinalBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
+        public unsafe int TransformFinalBlock(Block block)
         {
             // Do some validation
-            if (input == null) throw new ArgumentNullException("inputBuffer");
-            if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "ArgumentOutOfRange_NeedNonNegNum");
-            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
-            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+            block.Validate();
 
             int effectiveCount;
 
             if (_whitespaces == FromBase64TransformMode.IgnoreWhiteSpaces)
             {
-                effectiveCount = DiscardWhiteSpaces2(input, inputOffset, inputCount);
+                effectiveCount = DiscardWhiteSpaces2(block.input, block.inputOffset, block.inputCount);
             }
             else
             {
-                Buffer.BlockCopy(input, inputOffset, tempByteBuffer, 0, inputCount);
-                effectiveCount = inputCount;
+                Buffer.BlockCopy(block.input, block.inputOffset, tempByteBuffer, 0, block.inputCount);
+                effectiveCount = block.inputCount;
             }
 
             if (effectiveCount + inputIndex < 4)
@@ -195,9 +189,9 @@ namespace Base64
             Reset();
 
             // write chars directly to outputBuffer
-            fixed (byte* op = outputBuffer)
+            fixed (byte* op = block.outputBuffer)
             {
-                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
             }
         }
 
