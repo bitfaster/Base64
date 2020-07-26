@@ -486,7 +486,15 @@ namespace Base64
 
             var args = new object[] { inputPtr, inputLength,  destPtr, destLength };
 
-            return (int)FromBase64_DecodeMethodInfo.Invoke(null, args);
+            try
+            {
+                return (int)FromBase64_DecodeMethodInfo.Invoke(null, args);
+            }
+            catch (TargetInvocationException ex)
+            {
+                // unwrap
+                throw ex.InnerException ?? ex;
+            }
         }
 
         //public static unsafe int FromBase64_DecodeReflectDel(

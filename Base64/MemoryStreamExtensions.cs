@@ -188,6 +188,7 @@ namespace Base64
 
 	public static class NoBomEncoding
 	{
+		public static readonly Encoding ASCII = new ASCIIEncoding();
 		public static readonly Encoding UTF8 = new UTF8Encoding(false);
 		public static readonly Encoding Unicode = new UnicodeEncoding(false, false);
 	}

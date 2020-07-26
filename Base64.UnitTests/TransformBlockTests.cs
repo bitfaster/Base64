@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -74,14 +75,65 @@ namespace Base64.UnitTests
             Validate("YWFhYQ ==");
         }
 
+        [TestMethod]
+        public void InnerSpace()
+        {
+            string base64string = new string('a', 2016) + "Zm 9v";
+            Validate(base64string);
+        }
+
+        [TestMethod]
+        public void InnerSpaceChunked()
+        {
+            // there should be 3 bytes in temp in first block, but there is only 2.
+            string base64string = new string('a', 4) + "Zm 9v";
+            ValidateChunked(base64string, 4096);
+        }
+
         private void Validate(string input)
         {
             var reference = Convert.FromBase64String(input);
 
-            var bytes = Encoding.UTF8.GetBytes(input);
+            var bytes = Encoding.ASCII.GetBytes(input);
             int len = t.TransformBlock(bytes, 0, bytes.Length, outputBuffer, 0);
 
             len.Should().Be(reference.Length);
+
+            for (int i = 0; i < reference.Length; i++)
+            {
+                outputBuffer[i].Should().Be(reference[i], $"Difference at {i}");
+            }
+        }
+
+        private void ValidateChunked(string input, int maxChunkSize)
+        {
+            var reference = Convert.FromBase64String(input);
+
+            int inputBlockSize = 4;
+
+            var bytes = Encoding.ASCII.GetBytes(input);
+
+            int bytesToWrite = bytes.Length;
+            int inputIndex = 0;
+            int bytesWritten = 0;
+
+
+            int chunk = Math.Min(maxChunkSize, bytesToWrite);
+
+            // only write whole blocks
+            int numWholeBlocks = chunk / inputBlockSize;
+            int numWholeBlocksInBytes = numWholeBlocks * inputBlockSize;
+
+            bytesWritten += t.TransformBlock(bytes, inputIndex, numWholeBlocksInBytes, outputBuffer, bytesWritten);
+            inputIndex += numWholeBlocksInBytes;
+
+            int remainder = bytes.Length - inputIndex;
+            bytesWritten += t.TransformFinalBlock(bytes, inputIndex, remainder, outputBuffer, bytesWritten);
+
+
+
+            
+            bytesWritten.Should().Be(reference.Length);
 
             for (int i = 0; i < reference.Length; i++)
             {

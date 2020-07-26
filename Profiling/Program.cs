@@ -13,7 +13,7 @@ namespace Profiling
         {
             Console.WriteLine("Running...");
 
-            string lohString = new string('a', 43000).ToUtf8Base64String();
+            //string lohString = new string('a', 43000).ToUtf8Base64String();
 
             // var b = Encoding.UTF8.GetBytes(new string('a', 43000));
 

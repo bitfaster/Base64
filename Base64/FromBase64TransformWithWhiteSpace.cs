@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,7 +20,8 @@ namespace Base64
         // this cannot be on the stack. Can be eliminated if we do not need to trim whitespace
         private byte[] inputBuffer = new byte[bufferSize];
 
-        private byte[] tempByteBuffer = new byte[bufferSize];
+        private byte[] tempByteBuffer = new byte[4];
+        private int tempCount;
         private int inputIndex;
 
         // this can be stackalloc
@@ -43,6 +46,10 @@ namespace Base64
             get { return 3; }
         }
 
+        // This will result in us allowing some invalid non-whitespace chars, but it is fast.
+        // The invalid chars will be blocked later by UnsafeConvert.FromBase64CharArray
+        const uint intSpace = (uint)' ';
+
         // This is optimized for the case where there are either no whitespace chars, or very few.
         // Try to process continuous arrays of data. If there is a whitespace, process everything before in a continuous array.
         // Then try to find a valid 4 byte section and process it. Then continue to find and process continuous arrays.
@@ -57,34 +64,18 @@ namespace Base64
             int effectiveCount;
             int totalOutputBytes = 0;
 
-            int start = inputOffset;
-            int end = start + inputCount;
-
             fixed (byte* inputPtr = input) 
             {
-                byte* startPtr = (byte*)(inputPtr + start);
-                byte* endMarkerPtr = (byte*)(inputPtr + end);
+                byte* startPtr = (byte*)(inputPtr + inputOffset);
+                byte* endMarkerPtr = (byte*)(inputPtr + inputOffset + inputCount);
                 byte* endPtr = startPtr;
 
                 while (endPtr < endMarkerPtr)
                 {
-                    // This will result in us allowing some invalid non-whitespace chars, but it is fast.
-                    // The invalid chars will be blocked later by UnsafeConvert.FromBase64CharArray
-                    const uint intSpace = (uint)' ';
-
                     ///////////////////////////////////////////////////////////////////////////////////////////
                     // find ptrs to a section of the array that doesn't contain spaces
 
-                    // skip past leading space
-                    while (startPtr < endMarkerPtr)
-                    {
-                        uint c = (uint)(*startPtr);
-
-                        if (c > intSpace)
-                            break;
-
-                        startPtr++;
-                    }
+                    startPtr = SkipSpaces(startPtr, endMarkerPtr);
 
                     // we examined a section containing only whitespace, exit
                     if (startPtr >= endMarkerPtr)
@@ -92,22 +83,12 @@ namespace Base64
                         break;
                     }
 
-                    // find next space, or go to the end
-                    endPtr = startPtr;
-                    while (endPtr < endMarkerPtr)
-                    {
-                        uint c = (uint)(*endPtr);
-
-                        if (c <= intSpace)
-                            break;
-
-                        endPtr++;
-                    }
+                    endPtr = NextSpaceOrEnd(startPtr, endMarkerPtr);
 
                     ///////////////////////////////////////////////////////////////////////////////////////////
                     // Get the number of 4 bytes blocks to transform
                     effectiveCount = (int)(endPtr - startPtr);
-                    int numBlocks2 = (effectiveCount + inputIndex) / 4;
+                    int numBlocks2 = (effectiveCount) / 4;
 
                     ///////////////////////////////////////////////////////////////////////////////////////////
                     // Transform the bytes to chars and write to output
@@ -129,23 +110,23 @@ namespace Base64
                     ///////////////////////////////////////////////////////////////////////////////////////////
                     // Try to take 4 bytes starting from the last space.
 
-                    int remainder = (effectiveCount + inputIndex) % 4;
+                    int remainder = (effectiveCount) % 4;
 
                     if (remainder != 0)
                     {
                         // We need 4 bytes total, try to find remainder bytes after the whitespace
-                        startPtr += effectiveCount - remainder;
+                        byte* tmpPtr = startPtr + effectiveCount - remainder;
                         var temp = stackalloc byte[4];
 
                         int bytesFound = 0;
-                        while (startPtr < endMarkerPtr && bytesFound < 4)
+                        while (tmpPtr < endMarkerPtr && bytesFound < 4)
                         {
-                            uint c = (uint)(*startPtr);
+                            uint c = (uint)(*tmpPtr);
 
                             if (c > intSpace)
-                                temp[bytesFound++] = *startPtr;
+                                temp[bytesFound++] = *tmpPtr;
 
-                            startPtr++;
+                            tmpPtr++;
                         }
 
                         if (bytesFound == 4)
@@ -163,16 +144,25 @@ namespace Base64
                                 outputOffset += outputBytes;
                                 totalOutputBytes += outputBytes;
                             }
+
+                            // advance startPtr past the block just written
+                            startPtr = tmpPtr;
                         }
                         else
                         {
-                            // If we can't take 4 bytes, the length of the data was wrong
-                            throw new FormatException("Format_BadBase64CharArrayLength");
+                            // Must be the final block, store remaining bytes in the temp buffer
+                            fixed (byte* tp = this.tempByteBuffer)
+                            {
+                                Buffer.MemoryCopy(temp, tp, 4, bytesFound);
+                            }
+
+                            tempCount = bytesFound;
+                            break;
                         }
                     }
                     else
                     {
-                        inputIndex = remainder;
+                        // inputIndex = remainder;
                         startPtr = endPtr;
                     }
                 }
@@ -181,14 +171,91 @@ namespace Base64
             }
         }
 
-        // it looks like this is always zero blocks, due to the bufferred writer. So this method is not needed.
+        private static unsafe byte* NextSpaceOrEnd(byte* startPtr, byte* endMarkerPtr)
+        {
+            byte* endPtr = startPtr;
+            while (endPtr < endMarkerPtr)
+            {
+                uint c = (uint)(*endPtr);
+
+                if (c <= intSpace)
+                    break;
+
+                endPtr++;
+            }
+
+            return endPtr;
+        }
+
         public unsafe int TransformFinalBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
         {
-            // Do some validation
             if (input == null) throw new ArgumentNullException("inputBuffer");
             if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "ArgumentOutOfRange_NeedNonNegNum");
             if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
             if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+
+            int totalOutputBytes = 0;
+            int nWritten = 0;
+
+            // probably this becomes a sub method that can be run at the start of the other block method
+            if (this.tempCount > 0)
+            {
+                // try to write a full block starting with remainder of last write
+                byte* tempBytes = stackalloc byte[4];
+
+                fixed (byte* tp = this.tempByteBuffer)
+                {
+                    Buffer.MemoryCopy(tp, tempBytes, 4, this.tempCount);
+                }
+
+                fixed (byte* inputPtr = input)
+                {
+                    byte* startPtr = (byte*)(inputPtr + inputOffset);
+                    byte* endMarkerPtr = (byte*)(inputPtr + inputOffset + inputCount);
+                    byte* endPtr = startPtr;
+
+                    startPtr = SkipSpaces(startPtr, endMarkerPtr);
+
+                    int bytesNeeded = 4 - this.tempCount;
+
+                    while (bytesNeeded > 0 && startPtr < endMarkerPtr)
+                    {
+                        uint c = (uint)(*startPtr);
+
+                        if (c > intSpace)
+                        {
+                            tempBytes[this.tempCount++] = *startPtr;
+                            bytesNeeded--;
+                        }
+
+                        startPtr++;
+                    }
+
+                    if (bytesNeeded != 0)
+                    {
+                        throw new FormatException("Invalid base64 data length");
+                    }
+
+                    // we have 4 bytes, write it to output
+                    fixed (char* cp = tempCharBuffer)
+                    {
+                        nWritten = ASCII.GetChars(tempBytes, 4, cp, bufferSize);
+                    }
+
+                    fixed (byte* op = outputBuffer)
+                    {
+                        int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+
+                        outputOffset += outputBytes;
+                        totalOutputBytes += outputBytes;
+                    }
+
+                    // advance offset
+                    int count = (int)(startPtr - (byte*)(inputPtr + inputOffset));
+                    inputOffset += count;
+                    inputCount -= count;
+                }
+            }
 
             int effectiveCount;
 
@@ -198,7 +265,7 @@ namespace Base64
             if (effectiveCount + inputIndex < 4)
             {
                 Reset();
-                return 0;
+                return totalOutputBytes;
             }
 
             // Get the number of 4 byte blocks to transform
@@ -215,45 +282,42 @@ namespace Base64
             inputIndex = (effectiveCount + inputIndex) % 4;
             Buffer.BlockCopy(tempByteBuffer, effectiveCount - inputIndex, this.inputBuffer, 0, inputIndex);
 
-            int nWritten = 0;
 
             fixed (char* cp = tempCharBuffer)
             {
                 nWritten = ASCII.GetChars(transformBuffer, 4 * numBlocks, cp, 16);
             }
 
-            //byte[] tempBytes = Convert.FromBase64CharArray(tempCharBuffer, 0, nWritten);
-
-            //// reinitialize the transform
-            //Reset();
-            //return tempBytes;
-
             Reset();
 
             // write chars directly to outputBuffer
             fixed (byte* op = outputBuffer)
             {
-                return UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
+                return totalOutputBytes + UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
             }
         }
 
-        private int DiscardWhiteSpaces2(byte[] inputBuffer, int inputOffset, int inputCount)
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe byte* SkipSpaces(byte* startPtr, byte* endMarkerPtr)
         {
-            int effectiveCount = inputCount;
-            int i, iCount = 0;
+            while (startPtr < endMarkerPtr)
+            {
+                uint c = (uint)(*startPtr);
 
-            for (i = 0; i < inputCount; i++)
-                if (Char.IsWhiteSpace((char)inputBuffer[inputOffset + i]))
-                    effectiveCount--;
-                else
-                    tempByteBuffer[iCount++] = inputBuffer[inputOffset + i];
+                if (c > intSpace)
+                    break;
 
-            return effectiveCount;
+                startPtr++;
+            }
+
+            return startPtr;
         }
 
         // Reset the state of the transform so it can be used again
         private void Reset()
         {
+            this.tempCount = 0;
             inputIndex = 0;
         }
     }

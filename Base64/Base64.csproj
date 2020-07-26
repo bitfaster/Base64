@@ -56,6 +56,7 @@
     <Compile Include="MemoryStreamExtensions.cs" />
     <Compile Include="MemoryStreamFactory.cs" />
     <Compile Include="ObjectPool.cs" />
+    <Compile Include="PooledAsciiEncodingBuffer.cs" />
     <Compile Include="PooledUtf8EncodingBuffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StringExtensions.cs" />

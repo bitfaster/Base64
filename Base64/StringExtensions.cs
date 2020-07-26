@@ -58,7 +58,18 @@ namespace Base64
 				return Encoding.UTF8.GetString(bytes);
 			}
 
-			var encodingBuffer = PooledUtf8EncodingBuffer.GetInstance();
+			var encodingBuffer = PooledAsciiEncodingBuffer.GetInstance();
+
+			// in actual fact, FromBase64String(String s) does this:
+			//unsafe
+			//{
+			//	fixed (Char* sPtr = s)
+			//	{
+			//		return FromBase64CharPtr(sPtr, s.Length);
+			//	}
+			//}
+			// so there is no encoding, it is taking the bytes directly, without ASCII encoding
+			// can probably make the same thing with an 'encoding buffer' that does this
 
 			try
 			{
@@ -66,6 +77,9 @@ namespace Base64
 				{
 					using (var base64Stream = new TransformBase64Stream(s, base64Buffer, true))
 					{
+						// This should be an ASCII encoded buffer stream.
+						// chars = ASCII.GetChars(bytes), then base64
+						// This could also explain speed difference - ASCII is faster
 						using (var writer = new BufferedStreamWriter(base64Stream, encodingBuffer, true))
 						{
 							writer.Write(base64);
@@ -74,12 +88,12 @@ namespace Base64
 					}
 
 					s.TryGetBuffer(out var buffer);
-					return encodingBuffer.Encoding.GetString(buffer.Array, buffer.Offset, buffer.Count);
+					return Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
 				}
 			}
 			finally
 			{
-				PooledUtf8EncodingBuffer.Free(encodingBuffer);
+				PooledAsciiEncodingBuffer.Free(encodingBuffer);
 			}
 		}
 	}
