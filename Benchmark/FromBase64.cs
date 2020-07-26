@@ -47,12 +47,13 @@ namespace Benchmark
 
         public static IEnumerable<object[]> Data()
         {
-            yield return new object[] { "", 0 };
-            yield return new object[] { new string('a', 4).ToUtf8Base64String(), 4 };
-            yield return new object[] { new string('a', 16).ToUtf8Base64String(), 16 };
-            yield return new object[] { new string('a', 128).ToUtf8Base64String(), 128 };
-            yield return new object[] { new string('a', 256).ToUtf8Base64String(), 256 };
-            yield return new object[] { new string('a', 512).ToUtf8Base64String(), 512 };
+            // yield return new object[] { "", 0 };
+            // yield return new object[] { new string('a', 4).ToUtf8Base64String(), 4 };
+            // yield return new object[] { new string('a', 16).ToUtf8Base64String(), 16 };
+            //yield return new object[] { new string('a', 128).ToUtf8Base64String(), 128 };
+            //yield return new object[] { new string('a', 256).ToUtf8Base64String(), 256 };
+            //yield return new object[] { new string('a', 512).ToUtf8Base64String(), 512 };
+            yield return new object[] { new string('a', 1024).ToUtf8Base64String(), 1024 };
             yield return new object[] { new string('a', 2048).ToUtf8Base64String(), 2048 };
             yield return new object[] { new string('a', 4096).ToUtf8Base64String(), 4096 };
             ////yield return new object[] { new string('a', 6144).ToUtf8Base64String(), 6144 };

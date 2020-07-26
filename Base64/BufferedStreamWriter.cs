@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 
 namespace Base64
 {
+    // so, are we double copying?
+    // 1. Source stream => encodingBuffer.ByteBuffer
+    // 2. encodingBuffer.ByteBuffer => transform buffer
+    // could we eliminate step 2 by directly transforming the encoded bytes?
+
     // https://referencesource.microsoft.com/#mscorlib/system/io/streamwriter.cs
     // TODO: throw not supported on async methods
     public class BufferedStreamWriter : TextWriter
@@ -197,36 +202,5 @@ namespace Base64
             if (flushStream)
                 stream.Flush();
         }
-    }
-
-    //internal static class BufferBlock
-    //{
-    //    // A very simple and efficient memmove that assumes all of the
-    //    // parameter validation has already been done.  The count and offset
-    //    // parameters here are in bytes.  If you want to use traditional
-    //    // array element indices and counts, use Array.Copy.
-    //    [System.Security.SecuritySafeCritical]  // auto-generated
-    //    [ResourceExposure(ResourceScope.None)]
-    //    [MethodImplAttribute(MethodImplOptions.InternalCall)] // throws System.Security.SecurityException: ECall methods must be packaged into a system module.
-    //    internal static extern void InternalBlockCopy(Array src, int srcOffsetBytes, Array dst, int dstOffsetBytes, int byteCount);
-    //}
-
-    public class EncodingBuffer
-    {
-        public EncodingBuffer(Encoding encoding, int bufferSize)
-        {
-            this.Encoding = encoding;
-            this.Encoder = encoding.GetEncoder();
-            this.CharBuffer = new char[bufferSize];
-            this.ByteBuffer = new byte[encoding.GetMaxByteCount(bufferSize)];
-        }
-
-        public Encoding Encoding { get; }
-
-        public Encoder Encoder { get; }
-
-        public byte[] ByteBuffer { get; }
-
-        public char[] CharBuffer { get; }
     }
 }

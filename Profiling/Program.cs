@@ -20,8 +20,8 @@ namespace Profiling
             //ToUtf8Base64String();
 
             //FromUtf8Base64String();
-            CompareFromUtf8Base64String();
-            //LohTest();
+            //CompareFromUtf8Base64String();
+            LohTest();
 
             Console.WriteLine("Done");
             Console.ReadLine();
@@ -69,7 +69,7 @@ namespace Profiling
 
             for (int i = 0; i < 128; i++)
             {
-                for (int j = 0; j < 128; i++)
+                for (int j = 0; j < 128; j++)
                 {
                     sb.Append(alphabet[(i + j) % alphabet.Length]);
 
