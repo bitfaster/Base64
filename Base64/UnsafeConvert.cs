@@ -44,6 +44,26 @@ namespace Base64
             }
         }
 
+        // Try direct char*
+        [SecuritySafeCritical]
+        public static unsafe int FromBase64CharArray(char* inArray, int offset, int length, byte* destination)
+        {
+
+            if (inArray == null)
+                throw new ArgumentNullException("inArray");
+
+            if (length < 0)
+                throw new ArgumentOutOfRangeException("length", "ArgumentOutOfRange_Index");
+
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException("offset", "ArgumentOutOfRange_GenericPositive");
+
+            //if (offset > inArray.Length - length)
+            //    throw new ArgumentOutOfRangeException("offset", "ArgumentOutOfRange_OffsetLength");
+
+            return FromBase64CharPtr(inArray + offset, length, destination);
+        }
+
         // This method has been modified to accept pointer input buffers
         /// <summary>
         /// Convert Base64 encoding characters to bytes:

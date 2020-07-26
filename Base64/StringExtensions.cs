@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 
 namespace Base64
 {
-    public static class StringExtensions
-    {
+	public static class StringExtensions
+	{
 		/// <summary>
 		/// Convert large strings to UTF8 base 64 without allocating an intermediate byte array.
 		/// </summary>
@@ -23,7 +23,7 @@ namespace Base64
 				return Convert.ToBase64String(b);
 			}
 
-			var buffer = PooledUtf8EncodingBuffer.GetInstance();
+			var utf8Buffer = PooledUtf8EncodingBuffer.GetInstance();
 
 			try
 			{
@@ -31,7 +31,7 @@ namespace Base64
 				// Note that if the encoding has BOM, streamwriter will not match Encoding.X.GetBytes(test)
 				using (var s = MemoryStreamFactory.Create(nameof(ToUtf8Base64String)))
 				{
-					using (var w = new BufferedStreamWriter(s, buffer, true))
+					using (var w = new BufferedStreamWriter(s, utf8Buffer, true))
 					{
 						w.Write(input);
 						w.Flush();
@@ -43,14 +43,14 @@ namespace Base64
 			}
 			finally
 			{
-				PooledUtf8EncodingBuffer.Free(buffer);
+				PooledUtf8EncodingBuffer.Free(utf8Buffer);
 			}
 		}
 
 		// TODO: object pool for buffer
 		private static readonly Base64Buffer base64Buffer = new Base64Buffer();
 
-		public static string FromUtf8Base64String(this string base64)
+		public unsafe static string FromUtf8Base64String(this string base64)
 		{
 			if (base64.Length < 1024)
 			{
@@ -58,18 +58,7 @@ namespace Base64
 				return Encoding.UTF8.GetString(bytes);
 			}
 
-			var encodingBuffer = PooledAsciiEncodingBuffer.GetInstance();
-
-			// in actual fact, FromBase64String(String s) does this:
-			//unsafe
-			//{
-			//	fixed (Char* sPtr = s)
-			//	{
-			//		return FromBase64CharPtr(sPtr, s.Length);
-			//	}
-			//}
-			// so there is no encoding, it is taking the bytes directly, without ASCII encoding
-			// can probably make the same thing with an 'encoding buffer' that does this
+			var asciiBuffer = PooledAsciiEncodingBuffer.GetInstance();
 
 			try
 			{
@@ -77,10 +66,7 @@ namespace Base64
 				{
 					using (var base64Stream = new TransformBase64Stream(s, base64Buffer, true))
 					{
-						// This should be an ASCII encoded buffer stream.
-						// chars = ASCII.GetChars(bytes), then base64
-						// This could also explain speed difference - ASCII is faster
-						using (var writer = new BufferedStreamWriter(base64Stream, encodingBuffer, true))
+						using (var writer = new BufferedStreamWriter(base64Stream, asciiBuffer, true))
 						{
 							writer.Write(base64);
 							writer.Flush();
@@ -93,7 +79,44 @@ namespace Base64
 			}
 			finally
 			{
-				PooledAsciiEncodingBuffer.Free(encodingBuffer);
+				PooledAsciiEncodingBuffer.Free(asciiBuffer);
+			}
+		}
+
+		// Fastest way would be:
+		// 1. Convert to char*, array length is base64.Length
+		// 2. Stream has Write(char* charArray, int length)
+		// 3. TransformBlock has Transform(char * charArray, int length)
+		// this avoids an encoding call, and will directly get to unsafe convert with the char array
+		public unsafe static string FromUtf8Base64String2(this string base64)
+		{
+			fixed (char* sPtr = base64)
+			{
+				// Since char is double byte, this is a bit wrong
+				byte* b = (byte*)sPtr;
+				var b1 = b[0];
+				var b2 = b[1];
+
+
+				using (var s = MemoryStreamFactory.Create(nameof(FromUtf8Base64String)))
+				{
+					using (var base64Stream = new TransformBase64Stream(s, base64Buffer, true))
+					{
+						//base64Stream.Write(sPtr, 0, base64.Length);
+					}
+				}
+
+				return string.Empty;
+				// in actual fact, FromBase64String(String s) does this:
+				//unsafe
+				//{
+				//	fixed (Char* sPtr = s)
+				//	{
+				//		return FromBase64CharPtr(sPtr, s.Length);
+				//	}
+				//}
+				// so there is no encoding, it is taking the bytes directly, without ASCII encoding
+				// can probably make the same thing with an 'encoding buffer' that does this
 			}
 		}
 	}

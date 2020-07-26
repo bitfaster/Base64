@@ -22,7 +22,7 @@ namespace Base64
 
         private byte[] tempByteBuffer = new byte[4];
         private int tempCount;
-        private int inputIndex;
+       // private int inputIndex;
 
         // this can be stackalloc
         private char[] tempCharBuffer = new char[bufferSize];
@@ -30,7 +30,7 @@ namespace Base64
         // Constructors
         public FromBase64TransformWithWhiteSpace()
         {
-            inputIndex = 0;
+            //inputIndex = 0;
         }
 
         public int ChunkSize => bufferSize;
@@ -88,7 +88,7 @@ namespace Base64
                     ///////////////////////////////////////////////////////////////////////////////////////////
                     // Get the number of 4 bytes blocks to transform
                     effectiveCount = (int)(endPtr - startPtr);
-                    int numBlocks2 = (effectiveCount) / 4;
+                    int numBlocks = (effectiveCount) / 4;
 
                     ///////////////////////////////////////////////////////////////////////////////////////////
                     // Transform the bytes to chars and write to output
@@ -96,7 +96,7 @@ namespace Base64
                     int nWritten = 0;
                     fixed (char* cp = tempCharBuffer)
                     {
-                        nWritten = ASCII.GetChars(startPtr, 4 * numBlocks2, cp, bufferSize);
+                        nWritten = ASCII.GetChars(startPtr, 4 * numBlocks, cp, bufferSize);
                     }
 
                     fixed (byte* op = outputBuffer)
@@ -116,7 +116,6 @@ namespace Base64
                     {
                         // We need 4 bytes total, try to find remainder bytes after the whitespace
                         byte* tmpPtr = startPtr + effectiveCount - remainder;
-                        var temp = stackalloc byte[4];
 
                         int bytesFound = 0;
                         while (tmpPtr < endMarkerPtr && bytesFound < 4)
@@ -124,7 +123,7 @@ namespace Base64
                             uint c = (uint)(*tmpPtr);
 
                             if (c > intSpace)
-                                temp[bytesFound++] = *tmpPtr;
+                                this.tempByteBuffer[bytesFound++] = *tmpPtr;
 
                             tmpPtr++;
                         }
@@ -133,8 +132,9 @@ namespace Base64
                         {
                             // we have 4 bytes, write it to output
                             fixed (char* cp = tempCharBuffer)
+                            fixed (byte* tp = this.tempByteBuffer)
                             {
-                                nWritten = ASCII.GetChars(temp, 4, cp, bufferSize);
+                                nWritten = ASCII.GetChars(tp, 4, cp, bufferSize);
                             }
 
                             fixed (byte* op = outputBuffer)
@@ -150,12 +150,7 @@ namespace Base64
                         }
                         else
                         {
-                            // Must be the final block, store remaining bytes in the temp buffer
-                            fixed (byte* tp = this.tempByteBuffer)
-                            {
-                                Buffer.MemoryCopy(temp, tp, 4, bytesFound);
-                            }
-
+                            // Must be the final block, mark remaining bytes in the temp buffer
                             tempCount = bytesFound;
                             break;
                         }
@@ -169,22 +164,6 @@ namespace Base64
 
                 return totalOutputBytes;
             }
-        }
-
-        private static unsafe byte* NextSpaceOrEnd(byte* startPtr, byte* endMarkerPtr)
-        {
-            byte* endPtr = startPtr;
-            while (endPtr < endMarkerPtr)
-            {
-                uint c = (uint)(*endPtr);
-
-                if (c <= intSpace)
-                    break;
-
-                endPtr++;
-            }
-
-            return endPtr;
         }
 
         public unsafe int TransformFinalBlock(byte[] input, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
@@ -201,18 +180,10 @@ namespace Base64
             if (this.tempCount > 0)
             {
                 // try to write a full block starting with remainder of last write
-                byte* tempBytes = stackalloc byte[4];
-
-                fixed (byte* tp = this.tempByteBuffer)
-                {
-                    Buffer.MemoryCopy(tp, tempBytes, 4, this.tempCount);
-                }
-
                 fixed (byte* inputPtr = input)
                 {
                     byte* startPtr = (byte*)(inputPtr + inputOffset);
                     byte* endMarkerPtr = (byte*)(inputPtr + inputOffset + inputCount);
-                    byte* endPtr = startPtr;
 
                     startPtr = SkipSpaces(startPtr, endMarkerPtr);
 
@@ -224,7 +195,7 @@ namespace Base64
 
                         if (c > intSpace)
                         {
-                            tempBytes[this.tempCount++] = *startPtr;
+                            this.tempByteBuffer[this.tempCount++] = *startPtr;
                             bytesNeeded--;
                         }
 
@@ -238,8 +209,9 @@ namespace Base64
 
                     // we have 4 bytes, write it to output
                     fixed (char* cp = tempCharBuffer)
+                    fixed (byte* tp = this.tempByteBuffer)
                     {
-                        nWritten = ASCII.GetChars(tempBytes, 4, cp, bufferSize);
+                        nWritten = ASCII.GetChars(tp, 4, cp, bufferSize);
                     }
 
                     fixed (byte* op = outputBuffer)
@@ -262,25 +234,41 @@ namespace Base64
             Buffer.BlockCopy(input, inputOffset, tempByteBuffer, 0, inputCount);
             effectiveCount = inputCount;
 
-            if (effectiveCount + inputIndex < 4)
+            if (effectiveCount == 0)
             {
                 Reset();
                 return totalOutputBytes;
             }
 
-            // Get the number of 4 byte blocks to transform
-            int numBlocks = (effectiveCount + inputIndex) / 4;
+            if (effectiveCount < 4)
+            {
+                Reset();
 
-            byte* transformBuffer = stackalloc byte[inputIndex + effectiveCount];
+                // handle trailing whitespace
+                for (int i = inputOffset; i < inputCount; i++)
+                {
+                    if (input[i] != (int)' ' && input[i] != (int)'\n' && input[i] != (int)'\r' && input[i] != (int)'\t' && input[i] != (int)'\0')
+                    {
+                        throw new FormatException("Invalid length for a Base-64 char array or string");
+                    }  
+                }
+
+                return totalOutputBytes;
+            }
+
+            // Get the number of 4 byte blocks to transform
+            int numBlocks = (effectiveCount) / 4;
+
+            byte* transformBuffer = stackalloc byte[effectiveCount];
 
             fixed (byte* ip = this.inputBuffer, tp = tempByteBuffer)
             {
-                Buffer.MemoryCopy(ip, transformBuffer, inputIndex, inputIndex);
-                Buffer.MemoryCopy(tp, transformBuffer + inputIndex, effectiveCount, effectiveCount);
+                //Buffer.MemoryCopy(ip, transformBuffer, 0, 0);
+                Buffer.MemoryCopy(tp, transformBuffer + 0, effectiveCount, effectiveCount);
             }
 
-            inputIndex = (effectiveCount + inputIndex) % 4;
-            Buffer.BlockCopy(tempByteBuffer, effectiveCount - inputIndex, this.inputBuffer, 0, inputIndex);
+            //int inputIndex = (effectiveCount + 0) % 4;
+            //Buffer.BlockCopy(tempByteBuffer, effectiveCount - 0, this.inputBuffer, 0, inputIndex);
 
 
             fixed (char* cp = tempCharBuffer)
@@ -296,7 +284,6 @@ namespace Base64
                 return totalOutputBytes + UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + outputOffset);
             }
         }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe byte* SkipSpaces(byte* startPtr, byte* endMarkerPtr)
@@ -314,11 +301,28 @@ namespace Base64
             return startPtr;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe byte* NextSpaceOrEnd(byte* startPtr, byte* endMarkerPtr)
+        {
+            byte* endPtr = startPtr;
+            while (endPtr < endMarkerPtr)
+            {
+                uint c = (uint)(*endPtr);
+
+                if (c <= intSpace)
+                    break;
+
+                endPtr++;
+            }
+
+            return endPtr;
+        }
+
         // Reset the state of the transform so it can be used again
         private void Reset()
         {
             this.tempCount = 0;
-            inputIndex = 0;
+           // inputIndex = 0;
         }
     }
 }
