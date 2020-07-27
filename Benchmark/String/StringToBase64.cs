@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Benchmark
 {
     [MemoryDiagnoser]
-    public class ToBase64
+    public class StringToBase64
     {
         [GlobalSetup]
         public static void Setup()
@@ -19,9 +19,6 @@ namespace Benchmark
                 (d[0] as string).ToUtf8Base64String();
             }
         }
-
-        // StreamTo memory alloc should be something like ConvertTo - GetBytes, since GetBytes should be done via the pooled objects.
-        // Need to run under memory profiler and see where allocs come from.
 
         [Benchmark(Baseline = true)]
         [ArgumentsSource(nameof(Data))]

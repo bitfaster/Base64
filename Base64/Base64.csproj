@@ -47,6 +47,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Base64Buffer.cs" />
+    <Compile Include="Block.cs" />
+    <Compile Include="PooledBase64Buffer.cs" />
     <Compile Include="BufferedStreamWriter.cs" />
     <Compile Include="EncodingBuffer.cs" />
     <Compile Include="FasterFromBase64Transform.cs" />

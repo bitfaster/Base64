@@ -15,8 +15,6 @@ namespace Base64
         {
             this.FromBase64Transform = new FromBase64TransformWithWhiteSpace();
             this.FinalInputBlock = new byte[this.FromBase64Transform.InputBlockSize];
-            //this.OutputBuffer = new byte[this.FromBase64Transform.OutputBlockSize];
-
             this.Block = new Block(this.FromBase64Transform.InputBlockSize, this.FromBase64Transform.ChunkSize);
         }
 
@@ -24,14 +22,12 @@ namespace Base64
 
         public byte[] FinalInputBlock { get; }
 
-        //public byte[] OutputBuffer { get; }
-
         public Block Block { get; }
 
         public void Reset()
         {
-            Array.Clear(this.FinalInputBlock, 0, this.FinalInputBlock.Length);
-           // Array.Clear(this.OutputBuffer, 0, this.OutputBuffer.Length);
+            this.FromBase64Transform.Reset();
+            this.Block.Reset();
         }
     }
 }

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Benchmark
 {
     [MemoryDiagnoser]
-    public class FromBase64
+    public class StringFromBase64
     {
         [GlobalSetup]
         public static void Setup()

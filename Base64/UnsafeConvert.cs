@@ -334,7 +334,6 @@ namespace Base64
 
             while (inputPtr < inputEndPtr)
             {
-
                 UInt32 c = (UInt32)(*inputPtr);
                 inputPtr++;
 

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Benchmark
 {
     [MemoryDiagnoser]
-    public class FromBase64Loh
+    public class StringFromBase64Loh
     {
         private static readonly string lohString = new string('a', 500000).ToUtf8Base64String();
 

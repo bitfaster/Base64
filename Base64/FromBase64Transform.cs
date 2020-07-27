@@ -210,7 +210,7 @@ namespace Base64
         }
 
         // Reset the state of the transform so it can be used again
-        private void Reset()
+        public void Reset()
         {
             inputIndex = 0;
         }

@@ -47,10 +47,7 @@ namespace Base64
 			}
 		}
 
-		// TODO: object pool for buffer
-		private static readonly Base64Buffer base64Buffer = new Base64Buffer();
-
-		public unsafe static string FromUtf8Base64String(this string base64)
+		public static string FromUtf8Base64String(this string base64)
 		{
 			if (base64.Length < 1024)
 			{
@@ -58,7 +55,9 @@ namespace Base64
 				return Encoding.UTF8.GetString(bytes);
 			}
 
-			var asciiBuffer = PooledAsciiEncodingBuffer.GetInstance();
+			// this should actually be ASCII, but UTF8 is faster.
+			var utf8Buffer = PooledUtf8EncodingBuffer.GetInstance();
+			var base64Buffer = PooledBase64Buffer.GetInstance();
 
 			try
 			{
@@ -66,7 +65,7 @@ namespace Base64
 				{
 					using (var base64Stream = new TransformBase64Stream(s, base64Buffer, true))
 					{
-						using (var writer = new BufferedStreamWriter(base64Stream, asciiBuffer, true))
+						using (var writer = new BufferedStreamWriter(base64Stream, utf8Buffer, true))
 						{
 							writer.Write(base64);
 							writer.Flush();
@@ -79,7 +78,8 @@ namespace Base64
 			}
 			finally
 			{
-				PooledAsciiEncodingBuffer.Free(asciiBuffer);
+				PooledUtf8EncodingBuffer.Free(utf8Buffer);
+				PooledBase64Buffer.Free(base64Buffer);
 			}
 		}
 
@@ -88,36 +88,36 @@ namespace Base64
 		// 2. Stream has Write(char* charArray, int length)
 		// 3. TransformBlock has Transform(char * charArray, int length)
 		// this avoids an encoding call, and will directly get to unsafe convert with the char array
-		public unsafe static string FromUtf8Base64String2(this string base64)
-		{
-			fixed (char* sPtr = base64)
-			{
-				// Since char is double byte, this is a bit wrong
-				byte* b = (byte*)sPtr;
-				var b1 = b[0];
-				var b2 = b[1];
+		//public unsafe static string FromUtf8Base64String2(this string base64)
+		//{
+		//	fixed (char* sPtr = base64)
+		//	{
+		//		// Since char is double byte, this is a bit wrong
+		//		byte* b = (byte*)sPtr;
+		//		var b1 = b[0];
+		//		var b2 = b[1];
 
 
-				using (var s = MemoryStreamFactory.Create(nameof(FromUtf8Base64String)))
-				{
-					using (var base64Stream = new TransformBase64Stream(s, base64Buffer, true))
-					{
-						//base64Stream.Write(sPtr, 0, base64.Length);
-					}
-				}
+		//		using (var s = MemoryStreamFactory.Create(nameof(FromUtf8Base64String)))
+		//		{
+		//			using (var base64Stream = new TransformBase64Stream(s, base64Buffer, true))
+		//			{
+		//				//base64Stream.Write(sPtr, 0, base64.Length);
+		//			}
+		//		}
 
-				return string.Empty;
-				// in actual fact, FromBase64String(String s) does this:
-				//unsafe
-				//{
-				//	fixed (Char* sPtr = s)
-				//	{
-				//		return FromBase64CharPtr(sPtr, s.Length);
-				//	}
-				//}
-				// so there is no encoding, it is taking the bytes directly, without ASCII encoding
-				// can probably make the same thing with an 'encoding buffer' that does this
-			}
-		}
+		//		return string.Empty;
+		//		// in actual fact, FromBase64String(String s) does this:
+		//		//unsafe
+		//		//{
+		//		//	fixed (Char* sPtr = s)
+		//		//	{
+		//		//		return FromBase64CharPtr(sPtr, s.Length);
+		//		//	}
+		//		//}
+		//		// so there is no encoding, it is taking the bytes directly, without ASCII encoding
+		//		// can probably make the same thing with an 'encoding buffer' that does this
+		//	}
+		//}
 	}
 }

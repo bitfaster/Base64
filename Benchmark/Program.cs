@@ -1,4 +1,5 @@
-﻿using BenchmarkDotNet.Configs;
+﻿using Benchmark.Stream;
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using System;
@@ -14,7 +15,7 @@ namespace Benchmark
         static void Main(string[] args)
         {
             var summary = BenchmarkRunner
-               .Run<FromBase64>(ManualConfig.Create(DefaultConfig.Instance)
+               .Run<StreamFromBase64>(ManualConfig.Create(DefaultConfig.Instance)
                .With(Job.RyuJitX64));
         }
     }
