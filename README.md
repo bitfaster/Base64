@@ -1,6 +1,6 @@
 # Base64
 
-Extension methods to enable conversion to and from Base64 strings with reduced memory allocations.
+Extension methods to enable conversion to and from Base64 strings with reduced memory allocation. APIs working with both strings and streams are provided.
 
 ## TODO:
 
@@ -21,8 +21,13 @@ ASCII string => bytes, 20% on bytes => ASCII char. Can just convert to char* fro
 - https://tools.ietf.org/html/rfc4648
 - https://commons.apache.org/proper/commons-codec/xref-test/org/apache/commons/codec/binary/Base64Test.html
 
+### Using SIMD instructions
+
 - https://github.com/aklomp/base64
 - https://devblogs.microsoft.com/dotnet/the-jit-finally-proposed-jit-and-simd-are-getting-married/
+- https://docs.microsoft.com/en-us/dotnet/api/system.runtime.intrinsics.x86?view=netcore-3.1
+
+System.Numerics doesn't support bit shift operations on Vector<T>. Need to be on .NET Core with the intrinsics APIs.
 
 ## Benches
 
