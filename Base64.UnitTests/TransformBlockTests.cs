@@ -49,9 +49,14 @@ namespace Base64.UnitTests
             InvalidFormatFinalBlock("a");
             InvalidFormatFinalBlock("!");
             InvalidFormatFinalBlock("aa!");
+        }
 
-            // TODO: this is a bug - invalid length
-            // InvalidFormatFinalBlock("aaaaa");
+        [TestMethod]
+        public void InvalidLength()
+        {
+            //InvalidFormatFinalBlock("aaaaa", "");
+            //InvalidFormatFinalBlock("aaaa", "a"); // up to here works
+            InvalidFormatFinalBlock("aaa", "aa");
         }
 
         [TestMethod]
@@ -171,6 +176,29 @@ namespace Base64.UnitTests
             this.block.outputOffset = 0;
 
             t.TransformBlock(block);
+
+            t.Invoking(x => x.TransformFinalBlock(block)).Should().Throw<FormatException>();
+        }
+
+        private void InvalidFormatFinalBlock(string first, string final)
+        {
+            this.block.Reset();
+            t.Reset();
+
+            var bytes = Encoding.ASCII.GetBytes(first);
+
+            this.block.input = bytes;
+            this.block.inputOffset = 0;
+            this.block.inputCount = bytes.Length;
+            this.block.outputOffset = 0;
+
+            this.block.outputOffset += t.TransformBlock(block);
+
+            bytes = Encoding.ASCII.GetBytes(final);
+
+            this.block.input = bytes;
+            this.block.inputOffset = 0;
+            this.block.inputCount = bytes.Length;
 
             t.Invoking(x => x.TransformFinalBlock(block)).Should().Throw<FormatException>();
         }

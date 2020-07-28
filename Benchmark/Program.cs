@@ -15,7 +15,7 @@ namespace Benchmark
         static void Main(string[] args)
         {
             var summary = BenchmarkRunner
-               .Run<StreamFromBase64>(ManualConfig.Create(DefaultConfig.Instance)
+               .Run<StreamToBase64>(ManualConfig.Create(DefaultConfig.Instance)
                .With(Job.RyuJitX64));
         }
     }

@@ -156,34 +156,22 @@ namespace Base64
             block.Validate();
 
             int totalOutputBytes = 0;
-            int nWritten = 0;
 
             // probably this becomes a sub method that can be run at the start of the other block method
             if (this.tempCount > 0)
             {
-                totalOutputBytes += this.FlushTempBuffer(block);
+                totalOutputBytes = this.FlushTempBuffer(block);
             }
 
-            int effectiveCount;
-
-            // Has inputOffset advanced beyond count?
-
-
-            //Buffer.BlockCopy(block.input, block.inputOffset, tempByteBuffer, 0, block.inputCount);
-            effectiveCount = block.inputCount;
-
-            if (effectiveCount == 0)
+            if (block.inputCount == 0)
             {
-                Reset();
                 return totalOutputBytes;
             }
 
-            if (effectiveCount < 4)
+            if (block.inputCount < 4)
             {
-                Reset();
-
                 // handle trailing whitespace
-                for (int i = block.inputOffset; i < block.inputCount; i++)
+                for (int i = block.inputOffset; i < block.inputOffset + block.inputCount; i++)
                 {
                     if (block.input[i] != (int)' ' && block.input[i] != (int)'\n' && block.input[i] != (int)'\r' && block.input[i] != (int)'\t' && block.input[i] != (int)'\0')
                     {
@@ -194,31 +182,7 @@ namespace Base64
                 return totalOutputBytes;
             }
 
-            // TODO: if we get to here, and the output contains whitespace, it will not be stripped and we will end up with bogus count.
-
-            // Get the number of 4 byte blocks to transform
-            int numBlocks = (effectiveCount) / 4;
-
-            //byte* transformBuffer = stackalloc byte[effectiveCount];
-
-            //fixed (byte* tp = block.input)
-            //{
-            //    Buffer.MemoryCopy(tp, transformBuffer + 0, effectiveCount, effectiveCount);
-            //}
-
-            fixed (char* cp = tempCharBuffer)
-            fixed (byte* tp = block.input)
-            {
-                nWritten = ASCII.GetChars(tp, 4 * numBlocks, cp, bufferSize);
-            }
-
-            Reset();
-
-            // write chars directly to outputBuffer
-            fixed (byte* op = block.outputBuffer)
-            {
-                return totalOutputBytes + UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
-            }
+            throw new InvalidOperationException("Too much data written in final block");
         }
 
         private unsafe int FlushTempBuffer(Block block)

@@ -17,7 +17,7 @@ namespace Benchmark.Stream
 
         private static Data[] Setup()
         {
-            const int count = 8;
+            const int count = 10;
             var d = new Data[count];
 
             for (int i = 0; i < count; i++)
