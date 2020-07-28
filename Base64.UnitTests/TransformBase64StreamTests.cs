@@ -55,7 +55,6 @@ namespace Base64.UnitTests
             {
                 sb.Append(" ");
                 sb.Append(alphabet[i % alphabet.Length]);
-                //sb.Append("A");
                 sb.Append(" ");
             }
 

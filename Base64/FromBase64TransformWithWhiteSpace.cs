@@ -142,7 +142,6 @@ namespace Base64
                     }
                     else
                     {
-                        // inputIndex = remainder;
                         startPtr = endPtr;
                     }
                 }

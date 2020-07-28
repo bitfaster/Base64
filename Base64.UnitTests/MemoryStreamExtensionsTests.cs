@@ -54,20 +54,46 @@ namespace Base64.UnitTests
 			using (var s = new MemoryStream())
 			{
 				s.WriteFromBase64(utf8Base64String);
-				{
-					s.Position = 0;
+				
+				s.Position = 0;
 
-					var streamBase64Bytes = s.ToArray();
-					var convertBase64Bytes = Convert.FromBase64String(utf8Base64String);
+				var streamBase64Bytes = s.ToArray();
+				var convertBase64Bytes = Convert.FromBase64String(utf8Base64String);
 
-					streamBase64Bytes.Should().BeEquivalentTo(convertBase64Bytes);
+				streamBase64Bytes.Should().BeEquivalentTo(convertBase64Bytes);
 
-					// also check we can actually decode the bytes back to the original string
-					s.TryGetBuffer(out var buffer);
-					var decoded = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+				// also check we can actually decode the bytes back to the original string
+				s.TryGetBuffer(out var buffer);
+				var decoded = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
 
-					decoded.Should().Be(input);
-				}
+				decoded.Should().Be(input);
+			}
+		}
+
+		// if we fail and the internal structures are not reset before subsequent calls, we can be in
+		// a corrupt state (e.g. temp buffers contain partial data). This test is to check that everything
+		// is correctly reset
+		[TestMethod]
+		public void WriteFromBase64FailThenPass()
+		{
+			string input = "foo";
+			var utf8Base64String = input.ToUtf8Base64String();
+
+			using (var stream = new MemoryStream())
+			{
+				stream.Invoking(s => s.WriteFromBase64("aaaaa")).Should().Throw<FormatException>();
+			}
+
+			using (var s = new MemoryStream())
+			{
+				s.WriteFromBase64(utf8Base64String);
+				
+				s.Position = 0;
+
+				var streamBase64Bytes = s.ToArray();
+				var convertBase64Bytes = Convert.FromBase64String(utf8Base64String);
+
+				streamBase64Bytes.Should().BeEquivalentTo(convertBase64Bytes);
 			}
 		}
 	}

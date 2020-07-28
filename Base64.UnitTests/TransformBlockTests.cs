@@ -54,8 +54,8 @@ namespace Base64.UnitTests
         [TestMethod]
         public void InvalidLength()
         {
-            //InvalidFormatFinalBlock("aaaaa", "");
-            //InvalidFormatFinalBlock("aaaa", "a"); // up to here works
+            InvalidFormatFinalBlock("aaaaa", "");
+            InvalidFormatFinalBlock("aaaa", "a");
             InvalidFormatFinalBlock("aaa", "aa");
         }
 
