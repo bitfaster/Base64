@@ -23,13 +23,13 @@ namespace Base64
                 throw new ArgumentNullException("inArray");
 
             if (length < 0)
-                throw new ArgumentOutOfRangeException("length", "ArgumentOutOfRange_Index");
+                throw new ArgumentOutOfRangeException("length", "length must be positive.");
 
             if (offset < 0)
-                throw new ArgumentOutOfRangeException("offset", "ArgumentOutOfRange_GenericPositive");
+                throw new ArgumentOutOfRangeException("offset", "offset must be positive.");
 
             if (offset > inArray.Length - length)
-                throw new ArgumentOutOfRangeException("offset", "ArgumentOutOfRange_OffsetLength");
+                throw new ArgumentOutOfRangeException("offset", "offset is too long");
 
             fixed (char* inArrayPtr = inArray)
             {

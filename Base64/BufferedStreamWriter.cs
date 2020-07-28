@@ -81,7 +81,7 @@ namespace Base64
             if (count < 0)
                 throw new ArgumentOutOfRangeException("count");
             if (buffer.Length - index < count)
-                throw new ArgumentException("Invalid offset length");
+                throw new ArgumentException("Invalid index. index + count is beyond the buffer array bounds.");
 
             while (count > 0)
             {

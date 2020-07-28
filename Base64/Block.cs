@@ -23,11 +23,10 @@ namespace Base64
 
         public void Validate()
         {
-            // return;
-            if (input == null) throw new ArgumentNullException("inputBuffer");
-            if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "ArgumentOutOfRange_NeedNonNegNum");
-            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("Argument_InvalidValue");
-            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Argument_InvalidOffLen");
+            if (input == null) throw new ArgumentNullException("input");
+            if (inputOffset < 0) throw new ArgumentOutOfRangeException("inputOffset", "inputOffset must be positive");
+            if (inputCount < 0 || (inputCount > input.Length)) throw new ArgumentException("inputCount cannot be greater than input length");
+            if ((input.Length - inputCount) < inputOffset) throw new ArgumentException("Invalid offset. offset + inputCount is beyond the input array bounds.");
         }
 
         public void Reset()
