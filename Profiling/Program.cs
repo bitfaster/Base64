@@ -11,17 +11,38 @@ namespace Profiling
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Options:");
+            Console.WriteLine("1. ToUtf8Base64String");
+            Console.WriteLine("2. FromUtf8Base64String");
+            Console.WriteLine("3. FromUtf8Base64String (LOH)");
+            Console.WriteLine("4. CompareFromUtf8Base64String");
+
+            var input = Console.ReadLine();
+
+            if (!int.TryParse(input, out var selectedOption))
+            {
+                throw new Exception("not a valid int");
+            }
+
             Console.WriteLine("Running...");
 
-            //string lohString = new string('a', 43000).ToUtf8Base64String();
-
-            // var b = Encoding.UTF8.GetBytes(new string('a', 43000));
-
-            //ToUtf8Base64String();
-
-            //FromUtf8Base64String();
-            //CompareFromUtf8Base64String();
-            LohTest();
+            switch (selectedOption)
+            {
+                case 1:
+                    ToUtf8Base64String();
+                    break;
+                case 2:
+                    FromUtf8Base64String();
+                    break;
+                case 3:
+                    LohTest();
+                    break;
+                case 4:
+                    CompareFromUtf8Base64String();
+                    break;
+                default:
+                    throw new Exception("invalid option");
+            }
 
             Console.WriteLine("Done");
             Console.ReadLine();

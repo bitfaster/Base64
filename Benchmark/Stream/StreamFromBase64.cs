@@ -14,9 +14,10 @@ namespace Benchmark.Stream
     {
         private static Data[] data = Setup();
 
+        const int count = 10;
+
         private static Data[] Setup()
         {
-            const int count = 10;
             var d = new Data[count];
 
             for (int i = 0; i < count; i++)
@@ -59,14 +60,8 @@ namespace Benchmark.Stream
 
         public static IEnumerable<Data> Input()
         {
-            yield return data[0];
-            yield return data[1];
-            yield return data[2];
-            yield return data[3];
-            yield return data[4];
-            yield return data[5];
-            yield return data[6];
-            yield return data[7];
+            for (int i = 0; i < count; i++)
+                yield return data[i];
         }
 
         public class Data

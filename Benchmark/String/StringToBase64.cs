@@ -11,51 +11,67 @@ namespace Benchmark
     [MemoryDiagnoser]
     public class StringToBase64
     {
-        [GlobalSetup]
-        public static void Setup()
+        private static Data[] data = Setup();
+        const int count = 10;
+
+        private static Data[] Setup()
         {
-            foreach (object[] d in Data())
+            var d = new Data[count];
+
+            for (int i = 0; i < count; i++)
             {
-                (d[0] as string).ToUtf8Base64String();
+                int pow = (int)Math.Pow(2, i + 8);
+
+                d[i] = new Data(pow);
             }
+
+            return d;
         }
 
         [Benchmark(Baseline = true)]
-        [ArgumentsSource(nameof(Data))]
-        public string ConvertTo(string input, int count)
+        [ArgumentsSource(nameof(Length))]
+        public string ConvertTo(Data data)
         {
-            var b = Encoding.UTF8.GetBytes(input);
+            var b = Encoding.UTF8.GetBytes(data.String);
             return Convert.ToBase64String(b);
         }
 
         [Benchmark]
-        [ArgumentsSource(nameof(Data))]
-        public string StreamTo(string input, int count)
+        [ArgumentsSource(nameof(Length))]
+        public string StreamTo(Data data)
         {
-            return input.ToUtf8Base64String();
+            return data.String.ToUtf8Base64String();
         }
 
         //[Benchmark]
-        //[ArgumentsSource(nameof(Data))]
-        //public byte[] GetBytes(string input, int count)
+        //[ArgumentsSource(nameof(Length))]
+        //public byte[] GetBytes(Data data)
         //{
-        //    return Encoding.UTF8.GetBytes(input);
+        //    return Encoding.UTF8.GetBytes(data.String);
         //}
 
-        public static IEnumerable<object[]> Data()
+        public static IEnumerable<Data> Length()
         {
-            yield return new object[] { "", 0 };
-            yield return new object[] { new string('a', 4), 4 };
-            yield return new object[] { new string('a', 16), 16 };
-            yield return new object[] { new string('a', 128), 128 };
-            yield return new object[] { new string('a', 256), 256 };
-            yield return new object[] { new string('a', 512), 512 };
-            yield return new object[] { new string('a', 2048), 2048 };
-            yield return new object[] { new string('a', 4096), 4096 };
-            //yield return new object[] { new string('a', 6144), 6144 };
-            yield return new object[] { new string('a', 8192), 8192 };
-            yield return new object[] { new string('a', 16384), 16384 };
-            //yield return new object[] { new string('a', 32768), 32768 };
+            for (int i = 0; i < count; i++)
+                yield return data[i];
+        }
+
+        public class Data
+        {
+            public Data(int count)
+            {
+                this.String = new string('a', count);
+                this.Count = count;
+            }
+
+            public string String { get; set; }
+
+            public int Count { get; set; }
+
+            public override string ToString()
+            {
+                return Count.ToString();
+            }
         }
     }
 }
