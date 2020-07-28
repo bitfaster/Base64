@@ -1,14 +1,8 @@
 # Base64
 
-Extension methods to enable conversion to and from Base64 strings with reduced memory allocation. APIs working with both strings and streams are provided.
+Extension methods to enable conversion to and from Base64 strings with reduced memory allocation. Strings can be converted in place, or written/read from streams.
 
 ## TODO:
-
-- Functional tests for stream version of FromBase64
-	- space (leading, trailing, inner)
-	- padding (leading, trailing, inner)
-	- 1, 2 and 3 blocks
-	- incorrect length
 
 - Perf tests for crypto API stream, to demonstrate how bad it is
 
@@ -27,7 +21,7 @@ ASCII string => bytes, 20% on bytes => ASCII char. Can just convert to char* fro
 - https://devblogs.microsoft.com/dotnet/the-jit-finally-proposed-jit-and-simd-are-getting-married/
 - https://docs.microsoft.com/en-us/dotnet/api/system.runtime.intrinsics.x86?view=netcore-3.1
 
-System.Numerics doesn't support bit shift operations on Vector<T>. Need to be on .NET Core with the intrinsics APIs.
+System.Numerics doesn't support bit shift operations on Vector<T>. Need to be on .NET Core with the intrinsics APIs to try this.
 
 ## Benches
 
@@ -128,19 +122,79 @@ System.Numerics doesn't support bit shift operations on Vector<T>. Need to be on
 ### StringFromBase64
 
 
-|      Method | count |       Mean |     Error |    StdDev | Ratio |   Gen 0 | Allocated |
-|------------ |------ |-----------:|----------:|----------:|------:|--------:|----------:|
-| ConvertFrom |  1024 |   5.151 us | 0.0322 us | 0.0301 us |  1.00 |  0.7477 |   3.06 KB |
-|  StreamFrom |  1024 |  13.039 us | 0.1345 us | 0.1050 us |  2.53 |  0.7019 |   2.92 KB |
-|             |       |            |           |           |       |         |           |
-| ConvertFrom |  2048 |  10.082 us | 0.0836 us | 0.0698 us |  1.00 |  1.4801 |   6.07 KB |
-|  StreamFrom |  2048 |  22.835 us | 0.4533 us | 0.6355 us |  2.27 |  1.1902 |   4.93 KB |
-|             |       |            |           |           |       |         |           |
-| ConvertFrom |  4096 |  20.437 us | 0.3901 us | 0.5957 us |  1.00 |  2.9297 |  12.09 KB |
-|  StreamFrom |  4096 |  42.762 us | 0.2422 us | 0.2022 us |  2.11 |  2.1973 |   9.24 KB |
-|             |       |            |           |           |       |         |           |
-| ConvertFrom |  8192 |  39.599 us | 0.2580 us | 0.2154 us |  1.00 |  5.8594 |   24.1 KB |
-|  StreamFrom |  8192 |  82.677 us | 1.4932 us | 1.4666 us |  2.09 |  4.2725 |  17.53 KB |
-|             |       |            |           |           |       |         |           |
-| ConvertFrom | 16384 |  79.199 us | 0.8044 us | 0.6717 us |  1.00 | 11.5967 |   48.1 KB |
-|  StreamFrom | 16384 | 160.927 us | 1.0911 us | 0.9673 us |  2.03 |  8.3008 |  34.39 KB |
+|      Method |   data |         Mean |      Error |     StdDev |       Median | Ratio |    Gen 0 | Allocated |
+|------------ |------- |-------------:|-----------:|-----------:|-------------:|------:|---------:|----------:|
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |    256 |     1.431 us |  0.0240 us |  0.0225 us |     1.422 us |  1.00 |   0.1888 |     797 B |
+|  StreamFrom |    256 |     1.434 us |  0.0121 us |  0.0095 us |     1.437 us |  1.00 |   0.1888 |     797 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |    512 |     2.653 us |  0.0411 us |  0.0343 us |     2.649 us |  1.00 |   0.3700 |    1566 B |
+|  StreamFrom |    512 |     2.750 us |  0.0538 us |  0.0736 us |     2.762 us |  1.04 |   0.3700 |    1566 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |   1024 |     5.182 us |  0.0357 us |  0.0298 us |     5.191 us |  1.00 |   0.7401 |    3105 B |
+|  StreamFrom |   1024 |    12.637 us |  0.2507 us |  0.3346 us |    12.434 us |  2.46 |   0.6104 |    2564 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |   2048 |    10.099 us |  0.0789 us |  0.0616 us |    10.093 us |  1.00 |   1.4648 |    6183 B |
+|  StreamFrom |   2048 |    21.218 us |  0.4204 us |  0.5004 us |    21.106 us |  2.09 |   1.0986 |    4619 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |   4096 |    20.243 us |  0.3419 us |  0.2855 us |    20.129 us |  1.00 |   2.9297 |   12340 B |
+|  StreamFrom |   4096 |    39.915 us |  0.7939 us |  1.1637 us |    39.909 us |  1.97 |   2.0752 |    8878 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |   8192 |    40.005 us |  0.6649 us |  0.5552 us |    39.743 us |  1.00 |   5.8594 |   24628 B |
+|  StreamFrom |   8192 |    73.411 us |  0.6841 us |  0.6399 us |    73.551 us |  1.83 |   4.0283 |   17218 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |  16384 |    79.310 us |  0.7240 us |  0.6046 us |    79.353 us |  1.00 |  11.5967 |   49204 B |
+|  StreamFrom |  16384 |   145.456 us |  2.9057 us |  2.9839 us |   144.455 us |  1.84 |   8.0566 |   34052 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |  32768 |   157.254 us |  0.9824 us |  0.7670 us |   157.071 us |  1.00 |  23.1934 |   98356 B |
+|  StreamFrom |  32768 |   282.910 us |  3.5762 us |  2.7921 us |   282.367 us |  1.80 |  15.6250 |   67566 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom |  65536 |   322.867 us |  1.0735 us |  0.8964 us |   323.180 us |  1.00 |  41.5039 |  196648 B |
+|  StreamFrom |  65536 |   580.539 us | 11.4230 us | 14.0285 us |   576.197 us |  1.79 |  41.0156 |  134848 B |
+|             |        |              |            |            |              |       |          |           |
+| ConvertFrom | 131072 |   727.617 us |  6.1183 us |  5.7231 us |   727.427 us |  1.00 | 116.2109 |  393248 B |
+|  StreamFrom | 131072 | 1,161.373 us | 20.9996 us | 19.6431 us | 1,165.704 us |  1.60 |  80.0781 |  269048 B |
+
+This is comparing to crypto stream:
+
+|           Method |   data |          Mean |         Error |        StdDev |        Median | Ratio |     Gen 0 | Allocated |
+|----------------- |------- |--------------:|--------------:|--------------:|--------------:|------:|----------:|----------:|
+|      ConvertFrom |   1024 |      5.212 us |     0.0772 us |     0.0685 us |      5.192 us |  1.00 |    0.7401 |    3105 B |
+|       StreamFrom |   1024 |     14.102 us |     0.2803 us |     0.4526 us |     13.966 us |  2.73 |    0.6104 |    2564 B |
+| CryptoStreamFrom |   1024 |    340.905 us |     6.6863 us |     7.1542 us |    337.914 us | 65.36 |   15.1367 |   64173 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom | 131072 |    724.461 us |    14.1122 us |    16.2516 us |    728.312 us |  1.00 |  116.2109 |  393248 B |
+|       StreamFrom | 131072 |  1,333.259 us |    25.6557 us |    34.2496 us |  1,342.586 us |  1.84 |   78.1250 |  269204 B |
+| CryptoStreamFrom | 131072 | 48,468.583 us | 2,781.3085 us | 8,113.2075 us | 48,924.591 us | 62.92 | 1937.5000 | 8138814 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |  16384 |     79.516 us |     0.4226 us |     0.3746 us |     79.597 us |  1.00 |   11.5967 |   49204 B |
+|       StreamFrom |  16384 |    164.855 us |     2.1987 us |     1.8360 us |    164.543 us |  2.07 |    8.0566 |   34052 B |
+| CryptoStreamFrom |  16384 |  5,683.180 us |   105.5068 us |   170.3739 us |  5,657.788 us | 71.00 |  242.1875 | 1017862 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |   2048 |     10.369 us |     0.2059 us |     0.2451 us |     10.329 us |  1.00 |    1.4648 |    6183 B |
+|       StreamFrom |   2048 |     24.164 us |     0.4755 us |     0.8074 us |     23.877 us |  2.31 |    1.0986 |    4619 B |
+| CryptoStreamFrom |   2048 |    691.252 us |    13.6848 us |    16.2908 us |    686.989 us | 66.69 |   30.2734 |  127697 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |    256 |      1.465 us |     0.0285 us |     0.0435 us |      1.456 us |  1.00 |    0.1888 |     797 B |
+|       StreamFrom |    256 |      1.437 us |     0.0154 us |     0.0128 us |      1.437 us |  0.98 |    0.1888 |     797 B |
+| CryptoStreamFrom |    256 |     91.390 us |     1.8028 us |     2.4677 us |     90.778 us | 62.27 |    3.9063 |   16485 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |  32768 |    159.837 us |     3.0095 us |     2.8151 us |    158.512 us |  1.00 |   23.1934 |   98356 B |
+|       StreamFrom |  32768 |    333.685 us |     6.6702 us |    10.7711 us |    332.841 us |  2.06 |   15.6250 |   67566 B |
+| CryptoStreamFrom |  32768 |  7,377.096 us |   145.2380 us |   221.7937 us |  7,276.863 us | 46.52 |  484.3750 | 2035086 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |   4096 |     20.483 us |     0.3952 us |     0.5668 us |     20.174 us |  1.00 |    2.9297 |   12340 B |
+|       StreamFrom |   4096 |     43.803 us |     0.1993 us |     0.1556 us |     43.812 us |  2.12 |    2.0752 |    8878 B |
+| CryptoStreamFrom |   4096 |  1,464.109 us |    29.0035 us |    71.1460 us |  1,465.179 us | 71.87 |   60.5469 |  254914 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |    512 |      2.661 us |     0.0526 us |     0.0466 us |      2.641 us |  1.00 |    0.3700 |    1566 B |
+|       StreamFrom |    512 |      2.721 us |     0.0542 us |     0.0704 us |      2.688 us |  1.02 |    0.3700 |    1566 B |
+| CryptoStreamFrom |    512 |    169.252 us |     3.2611 us |     2.8908 us |    169.536 us | 63.62 |    7.5684 |   32320 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |  65536 |    326.723 us |     4.4098 us |     4.1249 us |    325.087 us |  1.00 |   41.5039 |  196648 B |
+|       StreamFrom |  65536 |    652.175 us |     8.4286 us |     7.4718 us |    651.282 us |  2.00 |   41.0156 |  134848 B |
+| CryptoStreamFrom |  65536 | 26,765.923 us |   498.0563 us |   511.4671 us | 26,772.116 us | 81.91 |  937.5000 | 4069672 B |
+|                  |        |               |               |               |               |       |           |           |
+|      ConvertFrom |   8192 |     40.626 us |     0.7880 us |     1.2499 us |     40.054 us |  1.00 |    5.8594 |   24628 B |
+|       StreamFrom |   8192 |     83.399 us |     0.7535 us |     0.6292 us |     83.319 us |  2.05 |    4.0283 |   17218 B |
+| CryptoStreamFrom |   8192 |  2,843.263 us |    55.1496 us |    63.5103 us |  2,835.220 us | 70.00 |  121.0938 |  509187 B |

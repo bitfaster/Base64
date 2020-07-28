@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -48,10 +49,45 @@ namespace Benchmark
 
         //[Benchmark]
         //[ArgumentsSource(nameof(Length))]
+        //public string CryptoStreamFrom(Data data)
+        //{
+        //    return CryptoFromUtf8Base64String(data.String);
+        //}
+
+        //[Benchmark]
+        //[ArgumentsSource(nameof(Length))]
         //public byte[] GetBytes(Data data)
         //{
         //    return Encoding.UTF8.GetBytes(data.String);
         //}
+
+        // just to demonstrate how bad crypto version is
+        public static string CryptoFromUtf8Base64String(string base64)
+        {
+            var encodingBuffer = PooledUtf8EncodingBuffer.GetInstance();
+
+            try
+            {
+                using (var s = MemoryStreamFactory.Create(nameof(CryptoFromUtf8Base64String)))
+                using (CryptoStream base64Stream = new CryptoStream(s, new System.Security.Cryptography.FromBase64Transform(), CryptoStreamMode.Write))
+                {
+                    using (var writer = new BufferedStreamWriter(base64Stream, encodingBuffer, true))
+                    {
+                        writer.Write(base64);
+                        writer.Flush();
+                    }
+
+                    base64Stream.FlushFinalBlock();
+
+                    s.TryGetBuffer(out var buffer);
+                    return encodingBuffer.Encoding.GetString(buffer.Array, buffer.Offset, buffer.Count);
+                }
+            }
+            finally
+            {
+                PooledUtf8EncodingBuffer.Free(encodingBuffer);
+            }
+        }
 
         public static IEnumerable<Data> Length()
         {
