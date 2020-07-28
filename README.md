@@ -2,6 +2,63 @@
 
 Extension methods to enable conversion to and from Base64 strings with reduced memory allocation. Strings can be converted in place, or written/read from streams.
 
+## Conversion via string extension methods
+
+```cs
+"foo".ToUtf8Base64String().FromUtf8Base64String() == "foo"
+```
+
+which is equivalent to
+
+```cs
+var b = Encoding.UTF8.GetBytes("foo");
+var s = Convert.ToBase64String(b);
+var r = Convert.FromBase64String(s);
+"foo" == Encoding.UTF8.GetString(r);
+```
+
+Internally, these extension methods use RecyclableMemoryStream and pooled buffers to avoid all intermediate byte[] and char[] allocations. For short strings, it falls back to Convert APIs which are faster and optimized for the small case.
+
+
+## Stream equivalents
+
+Since stream memory can be recycled, by keeping data in streams and not materializing string instances (e.g. write the stream to blob without ever converting to a string), we can effectively eliminate allocs.
+
+Read directly from a stream as Base64 string (data can be written to the stream via any stream APIs). Thus, client code can avoid intermediate byte[] allocs:
+
+```cs
+using (var s = new MemoryStream())
+{
+   s.WriteUtf8AndSetStart("foo"); // write some data to the stream
+   string base64Str = s.ReadToBase64();
+}
+```
+
+which is equivalent to
+
+```cs
+byte[] byteArray = Encoding.UTF8.GetBytes("foo");
+string base64Str = Convert.ToBase64String(byteArray);
+```
+
+The reverse is also possible, WriteFromBase64 will write decoded bits directly to a stream, stripping the base64 encoding:
+
+```cs
+string someBase64EncodedString = "Zm9v";
+
+using (var s = new MemoryStream())
+{
+   s.WriteFromBase64(someBase64EncodedString);
+   byte[] decodedBytes = s.ToArray();
+}
+```
+
+which is equivalent to
+
+```cs
+byte[] decodedBytes = Convert.FromBase64String(someBase64EncodedString);
+```
+
 ## TODO:
 
 - Fully optimized FromUtf8Base64String, based on char* end to end. Profiler shows that 20% time spent on 
@@ -55,37 +112,37 @@ System.Numerics doesn't support bit shift operations on Vector<T>. Need to be on
 
 ### StreamFromBase64
 
-|      Method |  input |       Mean |      Error |     StdDev |     Median | Ratio |    Gen 0 | Allocated |
-|------------ |------- |-----------:|-----------:|-----------:|-----------:|------:|---------:|----------:|
-| ConvertFrom |    256 |   1.482 us |  0.0294 us |  0.0422 us |   1.475 us |  1.00 |   0.1888 |     797 B |
-|  StreamFrom |    256 |   3.474 us |  0.0627 us |  0.0616 us |   3.474 us |  2.36 |   0.0610 |     264 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |    512 |   2.796 us |  0.0529 us |  0.0588 us |   2.778 us |  1.00 |   0.3700 |    1566 B |
-|  StreamFrom |    512 |   5.296 us |  0.1049 us |  0.1077 us |   5.282 us |  1.89 |   0.0610 |     264 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |   1024 |   5.276 us |  0.0969 us |  0.1116 us |   5.227 us |  1.00 |   0.7324 |    3105 B |
-|  StreamFrom |   1024 |   8.522 us |  0.0694 us |  0.0580 us |   8.511 us |  1.61 |   0.0610 |     265 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |   2048 |  10.992 us |  0.2694 us |  0.7729 us |  10.680 us |  1.00 |   1.4648 |    6183 B |
-|  StreamFrom |   2048 |  15.547 us |  0.1903 us |  0.1589 us |  15.490 us |  1.46 |   0.0610 |     265 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |   4096 |  20.937 us |  0.4165 us |  0.8508 us |  20.771 us |  1.00 |   2.9297 |   12340 B |
-|  StreamFrom |   4096 |  31.543 us |  0.6056 us |  0.7437 us |  31.253 us |  1.53 |   0.0610 |     413 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |   8192 |  42.058 us |  0.8296 us |  1.1898 us |  42.047 us |  1.00 |   5.8594 |   24628 B |
-|  StreamFrom |   8192 |  63.658 us |  1.2499 us |  2.4671 us |  62.715 us |  1.52 |   0.1221 |     561 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |  16384 |  83.405 us |  1.6537 us |  2.7629 us |  82.989 us |  1.00 |  11.5967 |   49204 B |
-|  StreamFrom |  16384 | 124.832 us |  2.4889 us |  4.9129 us | 123.378 us |  1.50 |        - |    1006 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |  32768 | 163.363 us |  3.0391 us |  7.1636 us | 160.397 us |  1.00 |  23.1934 |   98356 B |
-|  StreamFrom |  32768 | 241.901 us |  4.1513 us |  4.2631 us | 241.647 us |  1.42 |        - |    1748 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom |  65536 | 380.923 us |  7.6017 us | 18.9309 us | 376.869 us |  1.00 |  41.5039 |  196648 B |
-|  StreamFrom |  65536 | 503.032 us |  9.8727 us | 21.0395 us | 498.511 us |  1.32 |        - |    3384 B |
-|             |        |            |            |            |            |       |          |           |
-| ConvertFrom | 131072 | 772.906 us | 12.8717 us | 12.0402 us | 772.701 us |  1.00 | 124.0234 |  393248 B |
-|  StreamFrom | 131072 | 965.072 us | 14.5211 us | 12.1258 us | 959.965 us |  1.25 |        - |    6496 B |
+|      Method |  input |       Mean | Ratio | Allocated |
+|------------ |------- |-----------:|------:|----------:|
+| ConvertFrom |    256 |   1.482 us |  1.00 |     797 B |
+|  StreamFrom |    256 |   3.474 us |  2.36 |     264 B |
+|             |        |            |       |           |
+| ConvertFrom |    512 |   2.796 us |  1.00 |    1566 B |
+|  StreamFrom |    512 |   5.296 us |  1.89 |     264 B |
+|             |        |            |       |           |
+| ConvertFrom |   1024 |   5.276 us |  1.00 |    3105 B |
+|  StreamFrom |   1024 |   8.522 us |  1.61 |     265 B |
+|             |        |            |       |           |
+| ConvertFrom |   2048 |  10.992 us |  1.00 |    6183 B |
+|  StreamFrom |   2048 |  15.547 us |  1.46 |     265 B |
+|             |        |            |       |           |
+| ConvertFrom |   4096 |  20.937 us |  1.00 |   12340 B |
+|  StreamFrom |   4096 |  31.543 us |  1.53 |     413 B |
+|             |        |            |       |           |
+| ConvertFrom |   8192 |  42.058 us |  1.00 |   24628 B |
+|  StreamFrom |   8192 |  63.658 us |  1.52 |     561 B |
+|             |        |            |       |           |
+| ConvertFrom |  16384 |  83.405 us |  1.00 |   49204 B |
+|  StreamFrom |  16384 | 124.832 us |  1.50 |    1006 B |
+|             |        |            |       |           |
+| ConvertFrom |  32768 | 163.363 us |  1.00 |   98356 B |
+|  StreamFrom |  32768 | 241.901 us |  1.42 |    1748 B |
+|             |        |            |       |           |
+| ConvertFrom |  65536 | 380.923 us |  1.00 |  196648 B |
+|  StreamFrom |  65536 | 503.032 us |  1.32 |    3384 B |
+|             |        |            |       |           |
+| ConvertFrom | 131072 | 772.906 us |  1.00 |  393248 B |
+|  StreamFrom | 131072 | 965.072 us |  1.25 |    6496 B |
 
 
 ### StringToBase64

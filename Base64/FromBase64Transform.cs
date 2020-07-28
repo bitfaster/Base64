@@ -242,7 +242,6 @@ namespace Base64
             return totalOutputBytes;
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe byte* SkipSpaces(byte* startPtr, byte* endMarkerPtr)
         {
