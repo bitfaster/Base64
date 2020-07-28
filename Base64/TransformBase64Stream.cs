@@ -11,7 +11,7 @@ namespace Base64
     public class TransformBase64Stream : Stream
     {
         private readonly Stream stream;
-        private readonly IBase64Transform transform;
+        private readonly FromBase64Transform transform;
 
         private byte[] finalInputBlock;
         private int finalInputBlockCount = 0;
@@ -93,9 +93,6 @@ namespace Base64
         {
             throw new NotSupportedException(StreamNotSeekable);
         }
-
-        // It seems like first 3 if statements are never reached, can they be eliminated?
-        // in other words, does the while loop always write all the data? While loop says yes.
 
         public override void Write(byte[] buffer, int offset, int count)
         {

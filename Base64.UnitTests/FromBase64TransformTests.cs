@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 namespace Base64.UnitTests
 {
     [TestClass]
-    public class TransformBlockTests
+    public class FromBase64TransformTests
     {
-        private readonly FromBase64TransformWithWhiteSpace t = new FromBase64TransformWithWhiteSpace();
+        private readonly FromBase64Transform t = new FromBase64Transform();
 
         private readonly Block block = new Block(0, 4096);
 
@@ -42,13 +42,13 @@ namespace Base64.UnitTests
         [TestMethod]
         public void InvalidFormatFinalBlock()
         {
-            InvalidFormatFinalBlock("=");
-            InvalidFormatFinalBlock("==");
-            InvalidFormatFinalBlock("===");
+            InvalidFormatFinalBlock("=", "");
+            InvalidFormatFinalBlock("==", "");
+            InvalidFormatFinalBlock("===", "");
 
-            InvalidFormatFinalBlock("a");
-            InvalidFormatFinalBlock("!");
-            InvalidFormatFinalBlock("aa!");
+            InvalidFormatFinalBlock("a", "");
+            InvalidFormatFinalBlock("!", "");
+            InvalidFormatFinalBlock("aa!", "");
         }
 
         [TestMethod]
@@ -161,23 +161,6 @@ namespace Base64.UnitTests
             this.block.outputOffset = 0;
 
             t.Invoking(x => x.TransformBlock(block)).Should().Throw<FormatException>();
-        }
-
-        private void InvalidFormatFinalBlock(string input)
-        {
-            this.block.Reset();
-            t.Reset();
-
-            var bytes = Encoding.ASCII.GetBytes(input);
-
-            this.block.input = bytes;
-            this.block.inputOffset = 0;
-            this.block.inputCount = bytes.Length;
-            this.block.outputOffset = 0;
-
-            t.TransformBlock(block);
-
-            t.Invoking(x => x.TransformFinalBlock(block)).Should().Throw<FormatException>();
         }
 
         private void InvalidFormatFinalBlock(string first, string final)

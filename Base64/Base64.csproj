@@ -51,14 +51,10 @@
     <Compile Include="PooledBase64Buffer.cs" />
     <Compile Include="BufferedStreamWriter.cs" />
     <Compile Include="EncodingBuffer.cs" />
-    <Compile Include="FasterFromBase64Transform.cs" />
     <Compile Include="FromBase64Transform.cs" />
-    <Compile Include="FromBase64TransformWithWhiteSpace.cs" />
-    <Compile Include="IBase64Transform.cs" />
     <Compile Include="MemoryStreamExtensions.cs" />
-    <Compile Include="MemoryStreamFactory.cs" />
-    <Compile Include="ObjectPool.cs" />
-    <Compile Include="PooledAsciiEncodingBuffer.cs" />
+    <Compile Include="Infra\MemoryStreamFactory.cs" />
+    <Compile Include="Infra\ObjectPool.cs" />
     <Compile Include="PooledUtf8EncodingBuffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StringExtensions.cs" />
@@ -68,5 +64,6 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

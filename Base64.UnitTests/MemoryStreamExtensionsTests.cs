@@ -38,7 +38,6 @@ namespace Base64.UnitTests
 			{
 				s.WriteUtf8AndSetStart(test);
 
-				// ReadToBase64, ReadAsBase64
 				var streamString = s.ReadToBase64();
 
 				streamString.Should().Be(convertString);
@@ -94,6 +93,62 @@ namespace Base64.UnitTests
 				var convertBase64Bytes = Convert.FromBase64String(utf8Base64String);
 
 				streamBase64Bytes.Should().BeEquivalentTo(convertBase64Bytes);
+			}
+		}
+
+		[TestMethod]
+		public void RFC4648ExamplesFromBase64ProduceExpectedOutput()
+		{
+			VerifyWriteFromBase64("", "");
+			VerifyWriteFromBase64("Zg==", "f");
+			VerifyWriteFromBase64("Zm8=", "fo");
+			VerifyWriteFromBase64("Zm9v", "foo");
+			VerifyWriteFromBase64("Zm9vYg==", "foob");
+			VerifyWriteFromBase64("Zm9vYmE=", "fooba");
+			VerifyWriteFromBase64("Zm9vYmFy", "foobar");
+		}
+
+		[TestMethod]
+		public void FromBase64InvalidInputThrows()
+		{
+			// invalid length
+			ValidateInvalidFrom64("a");
+			ValidateInvalidFrom64("aa");
+			ValidateInvalidFrom64("aaa");
+			ValidateInvalidFrom64("aaaaa");
+			ValidateInvalidFrom64("aaaaaa");
+			ValidateInvalidFrom64("aaaaaaa");
+
+			// invalid char
+			ValidateInvalidFrom64("!aaa");
+
+			// invalid padding
+			ValidateInvalidFrom64("=aaa");
+			ValidateInvalidFrom64("==aa");
+			ValidateInvalidFrom64("a===");
+			ValidateInvalidFrom64("====");
+		}
+
+		private static void VerifyWriteFromBase64(string base64, string expectedAscii)
+		{
+			using (var s = new MemoryStream())
+			{
+				s.WriteFromBase64(base64);
+
+				s.Position = 0;
+
+				var streamBase64Bytes = s.ToArray();
+				var actual = Encoding.ASCII.GetString(streamBase64Bytes);
+
+				actual.Should().Be(expectedAscii);
+			}
+		}
+
+		private static void ValidateInvalidFrom64(string input)
+		{
+			using (var s = new MemoryStream())
+			{
+				s.Invoking(i => i.WriteFromBase64(input)).Should().Throw<FormatException>();
 			}
 		}
 	}

@@ -13,12 +13,12 @@ namespace Base64
     {
         public Base64Buffer()
         {
-            this.FromBase64Transform = new FromBase64TransformWithWhiteSpace();
+            this.FromBase64Transform = new FromBase64Transform();
             this.FinalInputBlock = new byte[this.FromBase64Transform.InputBlockSize];
             this.Block = new Block(this.FromBase64Transform.InputBlockSize, this.FromBase64Transform.ChunkSize);
         }
 
-        public IBase64Transform FromBase64Transform { get; }
+        public FromBase64Transform FromBase64Transform { get; }
 
         public byte[] FinalInputBlock { get; }
 

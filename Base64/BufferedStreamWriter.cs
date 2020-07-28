@@ -7,13 +7,7 @@ using System.Threading.Tasks;
 
 namespace Base64
 {
-    // so, are we double copying?
-    // 1. Source stream => encodingBuffer.ByteBuffer
-    // 2. encodingBuffer.ByteBuffer => transform buffer
-    // could we eliminate step 2 by directly transforming the encoded bytes?
-
     // https://referencesource.microsoft.com/#mscorlib/system/io/streamwriter.cs
-    // TODO: throw not supported on async methods
     public class BufferedStreamWriter : TextWriter
     {
         private Encoding encoding;
@@ -88,14 +82,12 @@ namespace Base64
                 throw new ArgumentOutOfRangeException("count");
             if (buffer.Length - index < count)
                 throw new ArgumentException("Invalid offset length");
-            // Contract.EndContractBlock();
 
             while (count > 0)
             {
                 if (charPos == charLen) Flush(false, false);
                 int n = charLen - charPos;
                 if (n > count) n = count;
-                //Contract.Assert(n > 0, "StreamWriter::Write(char[], int, int) isn't making progress!  This is most likely a race condition in user code.");
                 Buffer.BlockCopy(buffer, index * sizeof(char), charBuffer, charPos * sizeof(char), n * sizeof(char));
                 charPos += n;
                 index += n;
@@ -115,7 +107,6 @@ namespace Base64
                     if (charPos == charLen) Flush(false, false);
                     int n = charLen - charPos;
                     if (n > count) n = count;
-                    //Contract.Assert(n > 0, "StreamWriter::Write(String) isn't making progress!  This is most likely a race condition in user code.");
                     value.CopyTo(index, charBuffer, charPos, n);
                     charPos += n;
                     index += n;

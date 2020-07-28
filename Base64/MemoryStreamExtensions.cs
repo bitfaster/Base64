@@ -34,14 +34,15 @@ namespace Base64
 
 		public static void WriteFromBase64(this Stream stream, string base64)
 		{
-			var asciiBuffer = PooledAsciiEncodingBuffer.GetInstance();
+			// this should actually be ASCII, but UTF8 is faster.
+			var utf8Buffer = PooledUtf8EncodingBuffer.GetInstance();
 			var base64Buffer = PooledBase64Buffer.GetInstance();
 
 			try
 			{
 				using (var base64Stream = new TransformBase64Stream(stream, base64Buffer, true))
 				{
-					using (var writer = new BufferedStreamWriter(base64Stream, asciiBuffer, true))
+					using (var writer = new BufferedStreamWriter(base64Stream, utf8Buffer, true))
 					{
 						writer.Write(base64);
 						writer.Flush();
@@ -50,7 +51,7 @@ namespace Base64
 			}
 			finally
 			{
-				PooledAsciiEncodingBuffer.Free(asciiBuffer);
+				PooledUtf8EncodingBuffer.Free(utf8Buffer);
 				PooledBase64Buffer.Free(base64Buffer);
 			}
 		}

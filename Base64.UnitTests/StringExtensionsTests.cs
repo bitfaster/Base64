@@ -160,5 +160,43 @@ namespace Base64.UnitTests
 
 			streamString.Should().Be(convertString);
 		}
+
+		[TestMethod]
+		public void RFC4648ExamplesFromBase64ProduceExpectedOutput()
+		{
+			"".FromUtf8Base64String().Should().Be("");
+			"Zg==".FromUtf8Base64String().Should().Be("f");
+			"Zm8=".FromUtf8Base64String().Should().Be("fo");
+			"Zm9v".FromUtf8Base64String().Should().Be("foo");
+			"Zm9vYg==".FromUtf8Base64String().Should().Be("foob");
+			"Zm9vYmE=".FromUtf8Base64String().Should().Be("fooba");
+			"Zm9vYmFy".FromUtf8Base64String().Should().Be("foobar");
+		}
+
+		[TestMethod]
+		public void FromBase64InvalidInputThrows()
+		{
+			// invalid length
+			ValidateInvalidFrom64("a");
+			ValidateInvalidFrom64("aa");
+			ValidateInvalidFrom64("aaa");
+			ValidateInvalidFrom64("aaaaa");
+			ValidateInvalidFrom64("aaaaaa");
+			ValidateInvalidFrom64("aaaaaaa");
+
+			// invalid char
+			ValidateInvalidFrom64("!aaa");
+
+			// invalid padding
+			ValidateInvalidFrom64("=aaa");
+			ValidateInvalidFrom64("==aa");
+			ValidateInvalidFrom64("a===");
+			ValidateInvalidFrom64("====");
+		}
+
+		private static void ValidateInvalidFrom64(string input)
+		{ 
+			input.Invoking(i => i.FromUtf8Base64String()).Should().Throw<FormatException>();
+		}
 	}
 }
