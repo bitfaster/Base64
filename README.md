@@ -2,6 +2,8 @@
 
 Extension methods to enable conversion to and from Base64 strings with reduced memory allocation. Strings can be converted in place, or written/read from streams.
 
+Intended for use in legacy .NET framework (specifically 4.6).
+
 ## Conversion via string extension methods
 
 ```cs
