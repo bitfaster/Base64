@@ -162,6 +162,11 @@ namespace Base64
             }
         }
 
+        public override void Flush()
+        {
+            Flush(true, true);
+        }
+
         private void Flush(bool flushStream, bool flushEncoder)
         {
             // flushEncoder should be true at the end of the file and if

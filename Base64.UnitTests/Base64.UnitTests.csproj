@@ -58,6 +58,7 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BufferedStreamWriterTests.cs" />
     <Compile Include="TransformBase64StreamTests.cs" />
     <Compile Include="MemoryStreamExtensionsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
