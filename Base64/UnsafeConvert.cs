@@ -7,6 +7,7 @@ using System.Text;
 
 namespace Base64
 {
+#if NETFRAMEWORK
     public static class UnsafeConvert
     {
         /// <summary>
@@ -87,4 +88,5 @@ namespace Base64
             }
         }
     }
+#endif
 }

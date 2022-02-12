@@ -85,6 +85,7 @@ namespace Base64
                         nWritten = ASCII.GetChars(startPtr, 4 * numBlocks, cp, bufferSize);
                     }
 
+#if NETFRAMEWORK
                     fixed (byte* op = block.outputBuffer)
                     {
                         int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
@@ -92,7 +93,16 @@ namespace Base64
                         block.outputOffset += outputBytes;
                         totalOutputBytes += outputBytes;
                     }
+#endif
+#if NET5_0_OR_GREATER
+                    if (!Convert.TryFromBase64Chars(tempCharBuffer.AsSpan().Slice(0, nWritten), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes))
+                    {
+                        throw new FormatException();
+                    }
 
+                    block.outputOffset += outputBytes;
+                    totalOutputBytes += outputBytes;
+#endif
                     // If we couldn't write a complete block, try to find 4 bytes starting from the last space.
                     int remainder = effectiveCount % 4;
 
@@ -121,6 +131,7 @@ namespace Base64
                                 nWritten = ASCII.GetChars(tp, 4, cp, bufferSize);
                             }
 
+#if NETFRAMEWORK
                             fixed (byte* op = block.outputBuffer)
                             {
                                 int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
@@ -128,6 +139,16 @@ namespace Base64
                                 block.outputOffset += outputBytes;
                                 totalOutputBytes += outputBytes;
                             }
+#endif
+#if NET5_0_OR_GREATER
+                            if (!Convert.TryFromBase64Chars(tempCharBuffer.AsSpan().Slice(0, nWritten), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes2))
+                            {
+                                throw new FormatException();
+                            }
+
+                            block.outputOffset += outputBytes2;
+                            totalOutputBytes += outputBytes2;
+#endif
 
                             // advance startPtr past the block just written
                             startPtr = tmpPtr;
@@ -225,6 +246,7 @@ namespace Base64
                     nWritten = ASCII.GetChars(tp, 4, cp, bufferSize);
                 }
 
+#if NETFRAMEWORK
                 fixed (byte* op = block.outputBuffer)
                 {
                     int outputBytes = UnsafeConvert.FromBase64CharArray(tempCharBuffer, 0, nWritten, op + block.outputOffset);
@@ -232,6 +254,16 @@ namespace Base64
                     block.outputOffset += outputBytes;
                     totalOutputBytes += outputBytes;
                 }
+#endif
+#if NET5_0_OR_GREATER
+                if (!Convert.TryFromBase64Chars(tempCharBuffer.AsSpan().Slice(0, nWritten), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes2))
+                {
+                    throw new FormatException();
+                }
+
+                block.outputOffset += outputBytes2;
+                totalOutputBytes += outputBytes2;
+#endif
 
                 // advance offset
                 int count = (int)(startPtr - (byte*)(inputPtr + block.inputOffset));
