@@ -95,7 +95,7 @@ namespace Base64
                     }
 #endif
 #if NET5_0_OR_GREATER
-                    Convert.TryFromBase64Chars(tempCharBuffer.AsSpan(), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes);
+                    Convert.TryFromBase64Chars(tempCharBuffer.AsSpan().Slice(0, nWritten), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes);
 
                     block.outputOffset += outputBytes;
                     totalOutputBytes += outputBytes;
@@ -138,7 +138,7 @@ namespace Base64
                             }
 #endif
 #if NET5_0_OR_GREATER
-                            Convert.TryFromBase64Chars(tempCharBuffer.AsSpan(), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes2);
+                            Convert.TryFromBase64Chars(tempCharBuffer.AsSpan().Slice(0, nWritten), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes2);
 
                             block.outputOffset += outputBytes2;
                             totalOutputBytes += outputBytes2;
@@ -250,7 +250,7 @@ namespace Base64
                 }
 #endif
 #if NET5_0_OR_GREATER
-                Convert.TryFromBase64Chars(tempCharBuffer.AsSpan(), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes2);
+                Convert.TryFromBase64Chars(tempCharBuffer.AsSpan().Slice(0, nWritten), block.outputBuffer.AsSpan().Slice(block.outputOffset), out int outputBytes2);
 
                 block.outputOffset += outputBytes2;
                 totalOutputBytes += outputBytes2;
